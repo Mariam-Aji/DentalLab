@@ -233,6 +233,9 @@ namespace DentalLab.Api.Migrations
                     b.Property<int?>("CaseOrderId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("LabId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Path")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -252,6 +255,8 @@ namespace DentalLab.Api.Migrations
                     b.HasIndex("BlogPostId");
 
                     b.HasIndex("CaseOrderId");
+
+                    b.HasIndex("LabId");
 
                     b.HasIndex("PatientId");
 
@@ -286,6 +291,15 @@ namespace DentalLab.Api.Migrations
                     b.PrimitiveCollection<string>("Specialties")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SubscriptionEndUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SubscriptionGraceDays")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubscriptionStartUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -330,6 +344,43 @@ namespace DentalLab.Api.Migrations
                     b.HasIndex("LabId");
 
                     b.ToTable("LabPrices");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.LabSubscriptionPayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("PaidAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PeriodEndUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PeriodStartUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reference")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabId");
+
+                    b.ToTable("LabSubscriptionPayments");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.Notification", b =>
@@ -691,6 +742,11 @@ namespace DentalLab.Api.Migrations
                         .HasForeignKey("CaseOrderId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("DentalLab.Api.Models.Lab", "Lab")
+                        .WithMany("Gallery")
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("DentalLab.Api.Models.Patient", "Patient")
                         .WithMany("Files")
                         .HasForeignKey("PatientId")
@@ -699,6 +755,8 @@ namespace DentalLab.Api.Migrations
                     b.Navigation("BlogPost");
 
                     b.Navigation("CaseOrder");
+
+                    b.Navigation("Lab");
 
                     b.Navigation("Patient");
                 });
@@ -718,6 +776,17 @@ namespace DentalLab.Api.Migrations
                 {
                     b.HasOne("DentalLab.Api.Models.Lab", "Lab")
                         .WithMany("Prices")
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Lab");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.LabSubscriptionPayment", b =>
+                {
+                    b.HasOne("DentalLab.Api.Models.Lab", "Lab")
+                        .WithMany("SubscriptionPayments")
                         .HasForeignKey("LabId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -803,9 +872,13 @@ namespace DentalLab.Api.Migrations
 
                     b.Navigation("ConnectionRequests");
 
+                    b.Navigation("Gallery");
+
                     b.Navigation("Prices");
 
                     b.Navigation("Ratings");
+
+                    b.Navigation("SubscriptionPayments");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.Patient", b =>

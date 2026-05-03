@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DentalLab.Api.Models;
 
-public enum FileType { PhotoBefore, PhotoAfter, XRay, DigitalScan, Other }
+public enum FileType { PhotoBefore, PhotoAfter, XRay, DigitalScan, Other, LabGallery }
 
 public class FileResource
 {
@@ -15,9 +15,11 @@ public class FileResource
     public int? BlogPostId { get; set; }
     public int? CaseOrderId { get; set; }
     public int? PatientId { get; set; }
+    public int? LabId { get; set; }
 
     // Navigation
     public BlogPost? BlogPost { get; set; }
     public CaseOrder? CaseOrder { get; set; }
     public Patient? Patient { get; set; }
+    public Lab? Lab { get; set; }
 }

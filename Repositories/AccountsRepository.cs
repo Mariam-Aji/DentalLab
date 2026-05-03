@@ -28,6 +28,9 @@ public class AccountsRepository : IAccountsRepository, IAdminAccountsRepository
     public async Task AddRefreshTokenAsync(RefreshToken token)
         => await _db.RefreshTokens.AddAsync(token);
 
+    public async Task AddFileResourceAsync(FileResource file)
+        => await _db.FileResources.AddAsync(file);
+
     public async Task SaveChangesAsync()
         => await _db.SaveChangesAsync();
 
@@ -38,7 +41,10 @@ public class AccountsRepository : IAccountsRepository, IAdminAccountsRepository
         => _db.Users.FirstOrDefaultAsync(u => u.Id == id);
 
     public Task<Lab?> GetLabByIdAsync(int id)
-        => _db.Labs.AsNoTracking().Include(l => l.Owner).FirstOrDefaultAsync(l => l.Id == id);
+        => _db.Labs.AsNoTracking().Include(l => l.Owner).Include(l => l.Gallery).FirstOrDefaultAsync(l => l.Id == id);
+
+    public Task<Lab?> GetLabByIdTrackingAsync(int id)
+        => _db.Labs.FirstOrDefaultAsync(l => l.Id == id);
 
     public Task<User?> GetUserByEmailAsync(string email)
         => _db.Users.FirstOrDefaultAsync(u => u.Email == email);

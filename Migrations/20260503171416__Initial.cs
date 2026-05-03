@@ -132,7 +132,10 @@ namespace DentalLab.Api.Migrations
                     Materials = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Availability = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     HasScanVisitService = table.Column<bool>(type: "bit", nullable: false),
-                    AverageRating = table.Column<double>(type: "float", nullable: false)
+                    AverageRating = table.Column<double>(type: "float", nullable: false),
+                    SubscriptionStartUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    SubscriptionEndUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    SubscriptionGraceDays = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -290,6 +293,31 @@ namespace DentalLab.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "LabSubscriptionPayments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    LabId = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Method = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PaidAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PeriodStartUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PeriodEndUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Reference = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LabSubscriptionPayments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_LabSubscriptionPayments_Labs_LabId",
+                        column: x => x.LabId,
+                        principalTable: "Labs",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Ratings",
                 columns: table => new
                 {
@@ -381,7 +409,8 @@ namespace DentalLab.Api.Migrations
                     UploadedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     BlogPostId = table.Column<int>(type: "int", nullable: true),
                     CaseOrderId = table.Column<int>(type: "int", nullable: true),
-                    PatientId = table.Column<int>(type: "int", nullable: true)
+                    PatientId = table.Column<int>(type: "int", nullable: true),
+                    LabId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -396,6 +425,12 @@ namespace DentalLab.Api.Migrations
                         name: "FK_FileResources_CaseOrders_CaseOrderId",
                         column: x => x.CaseOrderId,
                         principalTable: "CaseOrders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FileResources_Labs_LabId",
+                        column: x => x.LabId,
+                        principalTable: "Labs",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -458,6 +493,11 @@ namespace DentalLab.Api.Migrations
                 column: "CaseOrderId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_FileResources_LabId",
+                table: "FileResources",
+                column: "LabId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FileResources_PatientId",
                 table: "FileResources",
                 column: "PatientId");
@@ -472,6 +512,11 @@ namespace DentalLab.Api.Migrations
                 table: "Labs",
                 column: "UserId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_LabSubscriptionPayments_LabId",
+                table: "LabSubscriptionPayments",
+                column: "LabId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Notifications_RecipientId",
@@ -533,6 +578,9 @@ namespace DentalLab.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "LabPrices");
+
+            migrationBuilder.DropTable(
+                name: "LabSubscriptionPayments");
 
             migrationBuilder.DropTable(
                 name: "Notifications");

@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ScanVisitRequest> ScanVisitRequests { get; set; }
     public DbSet<BlogPost> BlogPosts { get; set; }
     public DbSet<LabPrice> LabPrices { get; set; }
+    public DbSet<LabSubscriptionPayment> LabSubscriptionPayments { get; set; }
     public DbSet<FileResource> FileResources { get; set; }
     public DbSet<EmailOtp> EmailOtps { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -75,6 +76,12 @@ public class ApplicationDbContext : DbContext
             .WithOne(c => c.AssignedLab)
             .HasForeignKey(c => c.AssignedLabId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Lab>()
+            .HasMany(l => l.SubscriptionPayments)
+            .WithOne(p => p.Lab)
+            .HasForeignKey(p => p.LabId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<LabPrice>()
             .HasOne(p => p.Lab)
@@ -182,6 +189,12 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(f => f.PatientId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<FileResource>()
+            .HasOne(f => f.Lab)
+            .WithMany(l => l.Gallery)
+            .HasForeignKey(f => f.LabId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<ConnectionRequest>()
             .Property(c => c.Status)
             .HasConversion<string>();
@@ -210,6 +223,10 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<LabPrice>()
             .Property(p => p.CompensationType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<LabSubscriptionPayment>()
+            .Property(p => p.Method)
             .HasConversion<string>();
     }
 }

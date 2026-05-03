@@ -1,6 +1,7 @@
 using DentalLab.Api.Dtos;
 using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 
 namespace DentalLab.Api.Controllers;
 
@@ -9,10 +10,12 @@ namespace DentalLab.Api.Controllers;
 public class AccountsController : ControllerBase
 {
     private readonly IAccountService _accountService;
+    private readonly ILabGalleryService _labGalleryService;
 
-    public AccountsController(IAccountService accountService)
+    public AccountsController(IAccountService accountService, ILabGalleryService labGalleryService)
     {
         _accountService = accountService;
+        _labGalleryService = labGalleryService;
     }
 
     [HttpPost("dentist")]
@@ -32,6 +35,16 @@ public class AccountsController : ControllerBase
         if (error != null) return Conflict(error);
 
         return CreatedAtAction(nameof(GetLabById), new { id = result!.LabId }, result);
+    }
+    
+    [HttpPost("labs/{id:int}/gallery")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadLabGallery(int id, [FromForm] LabGalleryUploadDto dto)
+    {
+        var error = await _labGalleryService.AddLabGalleryAsync(id, dto.Images);
+        if (error != null) return BadRequest(error);
+
+        return NoContent();
     }
 
     [HttpGet("users/{id:int}")]
@@ -74,6 +87,13 @@ public class AccountsController : ControllerBase
             lab.Availability,
             lab.HasScanVisitService,
             lab.AverageRating,
+            Gallery = lab.Gallery.Select(g => new
+            {
+                g.Id,
+                g.Path,
+                g.Type,
+                g.UploadedAt
+            }),
             Owner = new
             {
                 lab.Owner.Id,
