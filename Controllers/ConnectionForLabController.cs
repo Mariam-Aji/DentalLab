@@ -43,6 +43,17 @@ public class ConnectionForLabController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("requests/count")]
+    public async Task<IActionResult> GetMyRequestsCount()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+        var (count, error) = await _connectionForLabService.GetPendingRequestsCountForLabAsync(userId);
+
+        if (error != null) return NotFound(new { message = error });
+
+        return Ok(new { count });
+    }
+
     [HttpPost("requests/{id:int}/accept")]
     public async Task<IActionResult> AcceptRequest(int id)
     {

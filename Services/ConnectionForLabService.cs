@@ -22,6 +22,15 @@ namespace DentalLab.Api.Services
             return (requests, null);
         }
 
+        public async Task<(int count, string? error)> GetPendingRequestsCountForLabAsync(int labUserId)
+        {
+            var labId = await _connectionForLabRepository.GetLabIdByUserAsync(labUserId);
+            if (labId == null) return (0, "المخبر غير موجود.");
+
+            var count = await _connectionForLabRepository.GetPendingRequestsCountForLabAsync(labId.Value);
+            return (count, null);
+        }
+
         public async Task<string?> AcceptRequestAsync(int labUserId, int requestId)
         {
             var labId = await _connectionForLabRepository.GetLabIdByUserAsync(labUserId);

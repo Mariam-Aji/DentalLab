@@ -32,6 +32,13 @@ namespace DentalLab.Api.Repositories
                 .ToListAsync();
         }
 
+        public async Task<int> GetPendingRequestsCountForLabAsync(int labId)
+        {
+            return await _context.ConnectionRequests
+                .Where(r => r.ToLabId == labId && r.Status == ConnectionRequestStatus.Pending)
+                .CountAsync();
+        }
+
         public async Task<ConnectionRequest?> GetRequestForLabAsync(int requestId, int labId)
         {
             return await _context.ConnectionRequests
