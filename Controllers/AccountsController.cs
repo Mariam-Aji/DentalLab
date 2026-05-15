@@ -36,7 +36,7 @@ public class AccountsController : ControllerBase
 
         return CreatedAtAction(nameof(GetLabById), new { id = result!.LabId }, result);
     }
-    
+
     [HttpPost("labs/{id:int}/gallery")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadLabGallery(int id, [FromForm] LabGalleryUploadDto dto)

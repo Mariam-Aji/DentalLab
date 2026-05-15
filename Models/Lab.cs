@@ -12,6 +12,7 @@ public class Lab
     [Required]
     public int UserId { get; set; }
     public User Owner { get; set; } = null!;
+     
     public int YearsOfExperience { get; set; }
     public List<string> Specialties { get; set; } = new();
     public List<string> Materials { get; set; } = new();

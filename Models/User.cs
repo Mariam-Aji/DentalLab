@@ -25,7 +25,6 @@ public class User
     public string? VerificationDocumentPath { get; set; }
     public DateTime? EmailVerifiedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
     // Navigation
     public List<CaseOrder> CreatedCases { get; set; } = new();
     public Lab? LabProfile { get; set; }
