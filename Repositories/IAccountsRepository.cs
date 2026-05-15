@@ -19,4 +19,5 @@ public interface IAccountsRepository
     Task<EmailOtp?> GetLatestEmailOtpAsync(int userId, EmailOtpPurpose purpose);
     Task<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash);
     Task<int?> GetLabIdByUserIdAsync(int userId);
+    Task<Lab?> GetLabByUserIdAsync(int userId);
 }

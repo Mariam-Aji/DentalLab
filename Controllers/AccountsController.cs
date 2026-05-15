@@ -10,12 +10,10 @@ namespace DentalLab.Api.Controllers;
 public class AccountsController : ControllerBase
 {
     private readonly IAccountService _accountService;
-    private readonly ILabGalleryService _labGalleryService;
 
-    public AccountsController(IAccountService accountService, ILabGalleryService labGalleryService)
+    public AccountsController(IAccountService accountService)
     {
         _accountService = accountService;
-        _labGalleryService = labGalleryService;
     }
 
     [HttpPost("dentist")]
@@ -35,16 +33,6 @@ public class AccountsController : ControllerBase
         if (error != null) return Conflict(error);
 
         return CreatedAtAction(nameof(GetLabById), new { id = result!.LabId }, result);
-    }
-
-    [HttpPost("labs/{id:int}/gallery")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadLabGallery(int id, [FromForm] LabGalleryUploadDto dto)
-    {
-        var error = await _labGalleryService.AddLabGalleryAsync(id, dto.Images);
-        if (error != null) return BadRequest(error);
-
-        return NoContent();
     }
 
     [HttpGet("users/{id:int}")]

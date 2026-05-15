@@ -69,6 +69,13 @@ public class AccountsRepository : IAccountsRepository, IAdminAccountsRepository
             .FirstOrDefaultAsync();
     }
 
+    public Task<Lab?> GetLabByUserIdAsync(int userId)
+        => _db.Labs.AsNoTracking()
+            .Include(l => l.Owner)
+            .Include(l => l.Gallery)
+            .Include(l => l.Prices)
+            .FirstOrDefaultAsync(l => l.UserId == userId);
+
     public Task<List<User>> GetPendingDentistApprovalsAsync()
         => _db.Users.AsNoTracking()
             .Where(u => u.Role == UserRole.Dentist && u.Status == AccountStatus.PendingAdminApproval)

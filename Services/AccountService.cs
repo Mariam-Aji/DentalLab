@@ -131,6 +131,8 @@ public class AccountService : IAccountService
 
     public Task<Lab?> GetLabByIdAsync(int id) => _repo.GetLabByIdAsync(id);
 
+    public Task<Lab?> GetLabByUserIdAsync(int userId) => _repo.GetLabByUserIdAsync(userId);
+
     public async Task<(LoginResponseDto? result, string? error)> LoginAsync(LoginRequestDto dto)
     {
         var email = dto.Email.Trim();

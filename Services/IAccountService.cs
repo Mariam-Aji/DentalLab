@@ -16,4 +16,5 @@ public interface IAccountService
     Task<string?> LogoutAsync(LogoutRequestDto dto);
     Task<User?> GetUserByIdAsync(int id);
     Task<Lab?> GetLabByIdAsync(int id);
+    Task<Lab?> GetLabByUserIdAsync(int userId);
 }
