@@ -7,7 +7,7 @@ using System.Linq;
 using System.Security.Claims;
 
 namespace DentalLab.Api.Controllers;
-
+//controller
 [ApiController]
 [Route("api/lab-profile")]
 [Authorize(Roles = "Lab")]

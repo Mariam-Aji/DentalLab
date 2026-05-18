@@ -4,7 +4,7 @@ using DentalLab.Api.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using System.IO;
-
+//
 namespace DentalLab.Api.Services;
 
 public class LabProfileService : ILabProfileService

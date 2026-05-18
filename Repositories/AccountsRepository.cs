@@ -3,7 +3,7 @@ using DentalLab.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace DentalLab.Api.Repositories;
-
+//
 public class AccountsRepository : IAccountsRepository, IAdminAccountsRepository
 {
     private readonly ApplicationDbContext _db;

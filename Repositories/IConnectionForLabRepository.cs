@@ -1,6 +1,6 @@
 using DentalLab.Api.Models;
 using System.Collections.Generic;
-
+//
 public interface IConnectionForLabRepository
 {
     Task<int?> GetLabIdByUserAsync(int userId);

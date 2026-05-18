@@ -1,6 +1,6 @@
 using DentalLab.Api.Models;
 using System.Collections.Generic;
-
+//
 public interface IConnectionForLabService
 {
     Task<(IEnumerable<ConnectionRequest> requests, string? error)> GetPendingRequestsForLabAsync(int labUserId);

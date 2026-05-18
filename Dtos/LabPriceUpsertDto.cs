@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using DentalLab.Api.Models;
 
 namespace DentalLab.Api.Dtos;
-
+//Dto
 public class LabPriceUpsertDto
 {
     [Required]

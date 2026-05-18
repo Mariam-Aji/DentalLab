@@ -1,5 +1,5 @@
 ﻿using DentalLab.Api.Models;
-
+//
 public interface IConnectionRepository
 {
     Task<bool> CreateRequestAsync(ConnectionRequest request);
