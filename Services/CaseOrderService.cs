@@ -28,7 +28,7 @@ namespace DentalLab.Api.Services
                 DeliveryDate = dto.DeliveryDate,
                 Notes = dto.Notes,
                 HasAccessories = dto.HasAccessories,
-                RequiredImages = imageUrls,
+                RequiredImages = imageUrls ?? new List<string>(),
                 EstimatedPrice = 0,
                 CreatedAt = DateTime.UtcNow
             };

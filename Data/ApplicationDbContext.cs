@@ -32,17 +32,14 @@ public class ApplicationDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<CaseOrder>()
-    .Property(o => o.RequiredImages)
-    .HasConversion(
-        v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-        v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>()
-    )
-    .HasColumnType("nvarchar(max)")
-    .Metadata.SetValueComparer(new ValueComparer<List<string>>(
-        (l, r) => l.SequenceEqual(r),
-        v => v.Aggregate(0, (a, b) => HashCode.Combine(a, b)),
-        v => v.ToList()));
+            .Property(e => e.RequiredImages)
+            .HasConversion(
+                v => string.Join(';', v), // ????? ??????? ??? ??? ?????: "url1;url2"
+                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList() // ????? ???? ?????? ??? ???????
+            );
         modelBuilder.Entity<User>()
             .Property(u => u.Role)
             .HasConversion<string>();

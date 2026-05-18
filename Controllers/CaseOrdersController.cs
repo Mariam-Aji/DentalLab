@@ -22,7 +22,7 @@ public class CaseOrdersController : ControllerBase
             List<string> imageUrls = new List<string>();
             if (dto.ImageFiles != null && dto.ImageFiles.Any())
             {
-                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads/cases");
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads/cases");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
                 foreach (var file in dto.ImageFiles)
