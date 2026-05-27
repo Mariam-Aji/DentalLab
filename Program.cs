@@ -1,6 +1,5 @@
 using DentalLab.Api.Data;
 using DentalLab.Api.Repositories;
-//using DentalLab.Api.Repositories.DentalLab.Api.Repositories;
 using DentalLab.Api.Services;
 using DentalLab.Api.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,37 +11,47 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
 
-
 var builder = WebApplication.CreateBuilder(args);
+
+// ? ?? ??????? 1: ??? ??????? ??? Controllers ?? ???? ???? ??? ?? ?? ?????????
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-    }); builder.Services.AddEndpointsApiExplorer();
+    })
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+    });
+
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
-builder.Services.AddSwaggerGen();
-// 1. ????? ????? CORS ?????? ???? Live Server ?????????
+
+// ? ?? ??????? 2: ????? ????? CORS ????? ???? ?????? ?? ?? ???? ?? Live Server ????
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLiveServer", policy =>
     {
-        policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500") // ???? ??? Live Server ????? ??
+        policy.SetIsOriginAllowed(origin => true) // ???? ??? ??? ???? (Localhost / 127.0.0.1)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // ????? ???? ??? ???? ?????? ?????? ??? ??? Cookies ?? ??? Headers
+              .AllowCredentials();
     });
 });
+
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection("OtpSettings"));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services.Configure<RefreshTokenSettings>(builder.Configuration.GetSection("RefreshTokenSettings"));
 builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
+
 builder.Services.AddScoped<ILabRepository, LabRepository>();
 builder.Services.AddScoped<ILabService, LabService>();
 builder.Services.AddScoped<IConnectionRepository, ConnectionRepository>();
 builder.Services.AddScoped<IConnectionService, ConnectionService>();
 builder.Services.AddScoped<IConnectionForLabRepository, ConnectionForLabRepository>();
 builder.Services.AddScoped<IConnectionForLabService, ConnectionForLabService>();
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Database=DentalLabDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
 
@@ -60,36 +69,30 @@ builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IFileResourceRepository, FileResourceRepository>();
 builder.Services.AddScoped<IScanVisitService, ScanVisitService>();
 builder.Services.AddScoped<IScanVisitRepository, ScanVisitRepository>();
-// ????? ???????? (Repository)
 builder.Services.AddScoped<ICaseOrderRepository, CaseOrderRepository>();
-
-// ????? ?????? (Service) - ??? ?? ????? ???? ??? ??????
 builder.Services.AddScoped<ICaseOrderService, CaseOrderService>();
-builder.Services.AddControllers()
-    .AddNewtonsoftJson(options =>
-    {
-        options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
-    });
+builder.Services.AddScoped<IBlogRepository, BlogRepository>();
+builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        In = ParameterLocation.Header,
         Description = "Enter 'Bearer' [space] and then your valid token in the text input below.\r\n\r\nExample: \"Bearer eyJhbGciOiJIUzI1NiIs...\""
     });
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                Reference = new OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -119,7 +122,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
-
 
 var app = builder.Build();
 
@@ -161,10 +163,12 @@ app.UseStaticFiles(new StaticFileOptions
         Path.Combine(builder.Environment.ContentRootPath, "uploads")),
     RequestPath = "/uploads"
 });
-app.MapHub<NotificationHub>("/notificationHub");
+
 app.UseCors("AllowLiveServer");
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHub<NotificationHub>("/notificationHub");
 app.MapControllers();
 
 app.Run();

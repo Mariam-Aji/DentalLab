@@ -16,23 +16,8 @@ public class ScanVisitController : ControllerBase
         _service = service;
     }
 
-    // 🔹 إضافة موعد من المخبر
-    [HttpPost("add-slot/{labId}")]
-    public async Task<IActionResult> AddSlot(int labId, DateTime date, TimeSpan time, SlotPeriod period)
-    {
-        await _service.AddSlotAsync(labId, date, time, period);
-        return Ok(new { message = "Slot created successfully" });
-    }
+   
 
-    // 🔹 عرض المواعيد المتاحة فقط
-    [HttpGet("available/{labId}")]
-    public async Task<IActionResult> GetAvailable(int labId)
-    {
-        var result = await _service.GetAvailableSlotsAsync(labId, DateTime.UtcNow);
-        return Ok(result);
-    }
-
-    // 🔹 حجز موعد (محمية لضمان قراءة التوكن بأمان)
     [Authorize(Roles = "Dentist")]
     [HttpPost("book/{labId}/{slotId}")]
     public async Task<IActionResult> Book(int labId, int slotId)

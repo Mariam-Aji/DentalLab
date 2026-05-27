@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 public class ScanVisitService : IScanVisitService
 {
     private readonly IScanVisitRepository _repository;
-    private readonly DentalLab.Api.Data.ApplicationDbContext _context; // حقن الـ DbContext لإضافة الإشعار مباشرة
+    private readonly DentalLab.Api.Data.ApplicationDbContext _context; 
 
     public ScanVisitService(IScanVisitRepository repository, DentalLab.Api.Data.ApplicationDbContext context)
     {
@@ -41,21 +41,17 @@ public class ScanVisitService : IScanVisitService
         await _repository.AddSlotAsync(slot);
     }
 
-    // 🔹 التعديل: حجز الموعد وإنشاء إشعار لصاحب المخبر بتفاصيل الحجز
     public async Task<bool> BookSlotAsync(int dentistId, int labId, int slotId)
     {
-        // 1. التحقق من الموعد وتوافره
         var slot = await _repository.GetSlotByIdAsync(slotId);
         if (slot == null || slot.IsBooked || slot.LabId != labId)
         {
             return false;
         }
 
-        // 2. تحديث حالة الموعد ليصبح محجوزاً
         slot.IsBooked = true;
         await _repository.UpdateSlotAsync(slot);
 
-        // 3. إضافة طلب الزيارة
         var request = new ScanVisitRequest
         {
             LabId = labId,
@@ -65,14 +61,14 @@ public class ScanVisitService : IScanVisitService
         };
         await _repository.AddVisitRequestAsync(request);
 
-        // 4. جلب صاحب المخبر وإرسال الإشعار له بالبنية المطابقة لـ Model الإشعارات لديك
+      
         var labOwner = await _repository.GetLabOwnerUserAsync(labId);
         if (labOwner != null)
         {
             var notification = new Notification
             {
                 RecipientId = labOwner.Id,
-                Type = NotificationType.ScanVisitConfirmed, // 👈 استخدام الـ Enum الخاص بك لزيارات الفحص
+                Type = NotificationType.ScanVisitConfirmed, 
                 Message = $"تم حجز موعد زيارة فحص جديدة للمخبر الخاص بك بتاريخ {slot.Date:yyyy-MM-dd} في تمام الساعة {slot.Time:hh\\:mm} {slot.Period}.",
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow
@@ -84,7 +80,7 @@ public class ScanVisitService : IScanVisitService
 
         return true;
     }
-    // أضف هذه الدالة داخل كلاس ScanVisitService في الأسفل:
+   
     public async Task<List<Notification>> GetLabNotificationsAsync(int labOwnerId)
     {
         return await _context.Notifications

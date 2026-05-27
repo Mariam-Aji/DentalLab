@@ -6,4 +6,6 @@ public interface IConnectionRepository
     Task<bool> RequestExistsAsync(int dentistId, int labId);
     Task<bool> LabExistsAsync(int labId);
     Task<bool> DeleteRequestAsync(int dentistId, int labId);
+    Task<int?> GetLabOwnerUserIdAsync(int labId);
+    Task AddNotificationAsync(Notification notification);
 }

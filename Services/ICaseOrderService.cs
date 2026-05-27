@@ -1,4 +1,5 @@
 ﻿using DentalLab.Api.Dtos;
+using DentalLab.Api.Models;
 using System.Threading.Tasks;
 
 namespace DentalLab.Api.Services
@@ -11,5 +12,11 @@ namespace DentalLab.Api.Services
       CaseOrderItemDto itemDto,
       int dentistId);
         Task<CaseOrderInvoiceDto> GetOrderInvoiceAsync(int orderId);
+
+        Task<(CreatePatientDto? result, string? error)> AddPatientToCaseOrderAsync(int caseOrderId, CreatePatientDto patientDto);
+        Task<List<CreatePatientDto>> GetAllPatientsAsync();
+        Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId);
+        Task<(object? result, string? error)> UpdatePatientDetailsAsync(int patientId, UpdatePatientDto dto, int dentistId);
     }
+
 }

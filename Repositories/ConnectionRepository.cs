@@ -35,5 +35,18 @@ namespace DentalLab.Api.Repositories
             _context.ConnectionRequests.Remove(request);
             return await _context.SaveChangesAsync() > 0;
         }
+        public async Task<int?> GetLabOwnerUserIdAsync(int labId)
+        {
+            return await _context.Labs
+                .Where(l => l.Id == labId)
+                .Select(l => (int?)l.UserId)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task AddNotificationAsync(Notification notification)
+        {
+            await _context.Notifications.AddAsync(notification);
+            await _context.SaveChangesAsync();
+        }
     }
 }

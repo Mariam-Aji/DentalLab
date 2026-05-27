@@ -30,16 +30,33 @@ namespace DentalLab.Api.Services
             {
                 FromDentistId = dentistId,
                 ToLabId = labId,
-                Status = ConnectionRequestStatus.Pending, 
+                Status = ConnectionRequestStatus.Pending,
                 CreatedAt = DateTime.UtcNow
             };
 
             var success = await _connectionRepository.CreateRequestAsync(request);
 
+            if (success)
+            {
+                var labOwnerUserId = await _connectionRepository.GetLabOwnerUserIdAsync(labId);
+                if (labOwnerUserId != null)
+                {
+                    var notification = new Notification
+                    {
+                        RecipientId = labOwnerUserId.Value,
+                        Type = NotificationType.InfoRequested, 
+                        Message = "لديك طلب متابعة اتصال جديد من أحد الأطباء، يرجى مراجعته وقبوله.",
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _connectionRepository.AddNotificationAsync(notification);
+                }
+            }
+
             return success
                 ? "تم إرسال طلب المتابعة بنجاح، بانتظار موافقة صاحب المخبر."
                 : "فشل في تنفيذ العملية.";
         }
-
     }
 }

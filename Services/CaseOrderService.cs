@@ -93,7 +93,6 @@ namespace DentalLab.Api.Services
 
                 Status = CaseStatus.Accepted,
 
-                // الجديد
                 ImpressionStage = dto.ImpressionStage,
 
                 Shade = dto.Shade,
@@ -124,7 +123,6 @@ namespace DentalLab.Api.Services
             {
                 OrderId = createdOrder.Id,
 
-                //Status = createdOrder.Status.ToString(),
 
                 ImpressionStage = createdOrder.ImpressionStage
             }, null);
@@ -167,7 +165,7 @@ namespace DentalLab.Api.Services
                 Status = order.Status.ToString(),
                 CompensationType = itemDto.CompensationType,
                 ToothNumbers = itemDto.ToothNumbers,
-             
+
             };
         }
 
@@ -190,6 +188,7 @@ namespace DentalLab.Api.Services
 
             return null;
         }
+
         public async Task<CaseOrderInvoiceDto> GetOrderInvoiceAsync(int orderId)
         {
             var order = await _repo.GetOrderWithItemsAsync(orderId);
@@ -237,6 +236,171 @@ namespace DentalLab.Api.Services
             await _repo.UpdateOrderAsync(order);
 
             return invoice;
+        }
+
+        public async Task<(CreatePatientDto? result, string? error)> AddPatientToCaseOrderAsync(int caseOrderId, CreatePatientDto patientDto)
+        {
+            var caseOrder = await _repo.GetOrderByIdAsync(caseOrderId);
+            if (caseOrder == null)
+            {
+                return (null, "الطلبية المحددة غير موجودة.");
+            }
+
+            var newPatient = new Patient
+            {
+                FullName = patientDto.FullName,
+                Age = patientDto.Age,
+                ClinicalNotes = patientDto.ClinicalNotes,
+                ProcessedTeeth = patientDto.ProcessedTeeth
+            };
+
+            var success = await _repo.AddPatientAndBindToOrderAsync(caseOrder, newPatient);
+
+            if (!success)
+            {
+                return (null, "فشل في حفظ البيانات بقاعدة البيانات.");
+            }
+
+            patientDto.PatientId = newPatient.Id; 
+            patientDto.CaseOrderId = caseOrderId;  
+
+            return (patientDto, null);
+        }
+        public async Task<List<CreatePatientDto>> GetAllPatientsAsync()
+        {
+            var patients = await _repo.GetAllPatientsAsync();
+
+            return patients.Select(p => new CreatePatientDto
+            {
+                PatientId = p.Id,
+                CaseOrderId = 0, 
+                FullName = p.FullName,
+                Age = p.Age,
+                ClinicalNotes = p.ClinicalNotes,
+                ProcessedTeeth = p.ProcessedTeeth
+            }).ToList();
+        }
+
+        public async Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId)
+        {
+            var caseOrder = await _repo.GetOrderByIdAsync(caseOrderId);
+            if (caseOrder == null)
+            {
+                return new { success = false, message = "الطلبية المحددة غير موجودة." };
+            }
+
+            var patient = await _repo.GetPatientByIdAsync(patientId);
+            if (patient == null)
+            {
+                return new { success = false, message = "المريض المحدد غير موجود في النظام." };
+            }
+
+            caseOrder.PatientId = patientId;
+            await _repo.UpdateOrderAsync(caseOrder);
+
+            return new
+            {
+                message = "تم إسناد المريض  بنجاح.",
+                patientDetails = new CreatePatientDto
+                {
+                    PatientId = patient.Id,
+                    CaseOrderId = caseOrderId, 
+                    FullName = patient.FullName,
+                    Age = patient.Age,
+                    ClinicalNotes = patient.ClinicalNotes,
+                    ProcessedTeeth = patient.ProcessedTeeth
+                }
+            };
+        }
+        public async Task<(object? result, string? error)> UpdatePatientDetailsAsync(int patientId, UpdatePatientDto dto, int dentistId)
+        {
+            var patient = await _repo.GetPatientWithFilesByIdAsync(patientId);
+            if (patient == null)
+            {
+                return (null, "المريض المحدد غير موجود.");
+            }
+
+            
+
+            if (!string.IsNullOrWhiteSpace(dto.FullName))
+            {
+                patient.FullName = dto.FullName;
+            }
+
+            if (dto.Age.HasValue)
+            {
+                patient.Age = dto.Age.Value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.ClinicalNotes))
+            {
+                patient.ClinicalNotes = dto.ClinicalNotes;
+            }
+
+            if (dto.ProcessedTeeth != null && dto.ProcessedTeeth.Any(t => !string.IsNullOrWhiteSpace(t)))
+            {
+                patient.ProcessedTeeth = dto.ProcessedTeeth.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+            }
+
+            if (dto.NewPhotos != null && dto.NewPhotos.Any())
+            {
+                var uploadsRoot = Path.Combine(
+                    _env.ContentRootPath,
+                    "uploads",
+                    "patients",
+                    patientId.ToString());
+
+                Directory.CreateDirectory(uploadsRoot);
+
+                foreach (var file in dto.NewPhotos)
+                {
+                    var validationError = ValidateOrderImage(file);
+                    if (validationError != null) return (null, $"{file.FileName}: {validationError}");
+
+                    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                    var fileName = $"{Guid.NewGuid():N}{ext}";
+                    var fullPath = Path.Combine(uploadsRoot, fileName);
+
+                    await using (var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    var relativePath = Path.Combine("uploads", "patients", patientId.ToString(), fileName).Replace("\\", "/");
+
+                    var newFileResource = new FileResource
+                    {
+                        Path = relativePath,
+                        Type = dto.NewPhotosType,
+                        UploadedAt = DateTime.UtcNow
+                    };
+
+                    patient.Files.Add(newFileResource);
+                }
+            }
+
+            var success = await _repo.UpdatePatientAsync(patient);
+            if (!success) return (null, "فشل في تحديث بيانات المريض بقاعدة البيانات.");
+
+            return (new
+            {
+                message = "تم تحديث سجل المريض وحفظ الصور الجديدة بنجاح.",
+                patientDetails = new
+                {
+                    PatientId = patient.Id,
+                    FullName = patient.FullName,      
+                    Age = patient.Age,              
+                    ClinicalNotes = patient.ClinicalNotes, 
+                    ProcessedTeeth = patient.ProcessedTeeth,
+                    Photos = patient.Files.Select(f => new
+                    {
+                        f.Id,
+                        f.Path,
+                        Type = f.Type.ToString(),
+                        f.UploadedAt
+                    }).ToList()
+                }
+            }, null);
         }
     }
 }

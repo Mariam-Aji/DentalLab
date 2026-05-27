@@ -60,4 +60,35 @@ public class CaseOrderRepository : ICaseOrderRepository
         return await _context.LabPrices
             .FirstOrDefaultAsync(x => x.LabId == labId && x.CompensationType == type);
     }
+    public async Task<bool> AddPatientAndBindToOrderAsync(CaseOrder order, Patient patient)
+    {
+        await _context.Patients.AddAsync(patient);
+        await _context.SaveChangesAsync(); 
+
+        order.PatientId = patient.Id;
+        _context.CaseOrders.Update(order);
+
+        return await _context.SaveChangesAsync() > 0;
+    }
+    public async Task<List<Patient>> GetAllPatientsAsync()
+    {
+        return await _context.Patients.ToListAsync();
+    }
+
+    public async Task<Patient?> GetPatientByIdAsync(int patientId)
+    {
+        return await _context.Patients.FirstOrDefaultAsync(p => p.Id == patientId);
+    }
+    public async Task<Patient?> GetPatientWithFilesByIdAsync(int patientId)
+    {
+        return await _context.Patients
+            .Include(p => p.Files) 
+            .FirstOrDefaultAsync(p => p.Id == patientId);
+    }
+
+    public async Task<bool> UpdatePatientAsync(Patient patient)
+    {
+        _context.Patients.Update(patient);
+        return await _context.SaveChangesAsync() > 0;
+    }
 }

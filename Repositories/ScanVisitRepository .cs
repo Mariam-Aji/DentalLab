@@ -15,7 +15,6 @@ public class ScanVisitRepository : IScanVisitRepository
         _context = context;
     }
 
-    // 🔹 جلب المواعيد غير المحجوزة فقط والتي تاريخها من اليوم فصاعداً
     public async Task<List<LabScanSlot>> GetAvailableSlotsAsync(int labId, DateTime fromDate)
     {
         var today = fromDate.Date;
@@ -61,7 +60,7 @@ public class ScanVisitRepository : IScanVisitRepository
             .FirstOrDefaultAsync();
     }
 
-    // 🔹 الدالة المفقودة التي تحل خطأ الـ Interface وتضيف الإشعار لقاعدة البيانات
+   
     public async Task AddNotificationAsync(Notification notification)
     {
         await _context.Notifications.AddAsync(notification);
