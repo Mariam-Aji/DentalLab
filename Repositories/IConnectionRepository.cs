@@ -8,4 +8,5 @@ public interface IConnectionRepository
     Task<bool> DeleteRequestAsync(int dentistId, int labId);
     Task<int?> GetLabOwnerUserIdAsync(int labId);
     Task AddNotificationAsync(Notification notification);
+    //
 }

@@ -6,5 +6,6 @@ namespace DentalLab.Api.Repositories
     {
         Task AddAsync(FileResource file);
         Task SaveChangesAsync();
+        //
     }
 }

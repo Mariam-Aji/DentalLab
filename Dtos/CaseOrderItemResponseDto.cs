@@ -10,5 +10,6 @@ namespace DentalLab.Api.Dtos
 
         public CompensationType CompensationType { get; set; }
         public List<int> ToothNumbers { get; set; } = new();
+        //
     }
 }

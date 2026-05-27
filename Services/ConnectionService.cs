@@ -59,4 +59,5 @@ namespace DentalLab.Api.Services
                 : "فشل في تنفيذ العملية.";
         }
     }
+    //
 }

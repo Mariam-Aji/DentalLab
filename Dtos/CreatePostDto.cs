@@ -14,5 +14,6 @@ namespace DentalLab.Api.Dtos
         public bool IsSensitiveRedacted { get; set; }
 
         public List<IFormFile>? DocumentFiles { get; set; }
+        //
     }
 }

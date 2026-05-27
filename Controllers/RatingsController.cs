@@ -72,7 +72,7 @@ namespace DentalLab.Api.Controllers
             return Ok(labs);
         }
     }
-
+    //
 
 
 

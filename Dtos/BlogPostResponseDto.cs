@@ -9,6 +9,6 @@ public class BlogPostResponseDto
     public int AuthorId { get; set; }
     public bool IsSensitiveRedacted { get; set; }
     public DateTime CreatedAt { get; set; }
-
+    //
     public List<BlogAttachmentDto> Attachments { get; set; } = new();
 }

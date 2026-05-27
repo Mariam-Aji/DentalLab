@@ -49,4 +49,5 @@ public class ScanVisitController : ControllerBase
         var notifications = await _service.GetLabNotificationsAsync(labOwnerId);
         return Ok(notifications);
     }
+    //
 }

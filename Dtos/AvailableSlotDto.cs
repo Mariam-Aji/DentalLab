@@ -4,4 +4,5 @@
     public DateTime Date { get; set; }
     public TimeSpan Time { get; set; }
     public string Period { get; set; } = "";
+    //
 }

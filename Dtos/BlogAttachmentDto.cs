@@ -9,5 +9,6 @@ namespace DentalLab.Api.Dtos
         public string Type { get; set; } = null!; 
         public DateTime UploadedAt { get; set; }
         public int? BlogPostId { get; set; }
+    //
     }
 }

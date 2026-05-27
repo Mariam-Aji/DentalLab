@@ -184,10 +184,8 @@ namespace DentalLab.Api.Services
         }
         public async Task<List<BlogPostResponseDto>> GetDoctorPostsAsync(int doctorId)
         {
-            // 1. جلب المنشورات الخاصة بالطبيب من المستودع
             var posts = await _blogRepo.GetBlogPostsByAuthorIdAsync(doctorId);
 
-            // 2. تحويل قائمة المنشورات إلى الـ DTO النظيف المعتمد مسبقاً
             return posts.Select(post => new BlogPostResponseDto
             {
                 PostId = post.Id,
@@ -201,7 +199,7 @@ namespace DentalLab.Api.Services
                 {
                     Id = a.Id,
                     Path = a.Path,
-                    Type = a.Type.ToString(), // تظهر كلمة "Other"
+                    Type = a.Type.ToString(), 
                     UploadedAt = a.UploadedAt,
                     BlogPostId = post.Id
                 }).ToList()

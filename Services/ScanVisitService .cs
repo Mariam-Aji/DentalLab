@@ -88,4 +88,5 @@ public class ScanVisitService : IScanVisitService
             .OrderByDescending(n => n.CreatedAt)
             .ToListAsync();
     }
+    //
 }

@@ -13,5 +13,6 @@ namespace DentalLab.Api.Dtos
         public string? ClinicalNotes { get; set; }
 
         public List<string> ProcessedTeeth { get; set; } = new();
+        //
     }
 }

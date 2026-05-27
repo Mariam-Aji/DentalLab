@@ -66,4 +66,5 @@ public class ScanVisitRepository : IScanVisitRepository
         await _context.Notifications.AddAsync(notification);
         await _context.SaveChangesAsync();
     }
+    //
 }

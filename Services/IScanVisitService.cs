@@ -10,3 +10,4 @@ public interface IScanVisitService
     Task<bool> BookSlotAsync(int dentistId, int labId, int slotId);
     Task<List<Notification>> GetLabNotificationsAsync(int labOwnerId);
 }
+//

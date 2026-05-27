@@ -14,4 +14,5 @@ public interface IScanVisitRepository
 
     Task<User?> GetLabOwnerUserAsync(int labId);
     Task AddNotificationAsync(Notification notification);
+    //
 }

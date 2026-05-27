@@ -17,7 +17,6 @@ public class PatientsController : ControllerBase
         _patientService = patientService;
     }
 
-    // 🔹 الراوت يفرض وجود الـ caseOrderId في الرابط، والدخول للأطباء حصراً
     [Authorize(Roles = "Dentist")]
     [HttpPost("case/{caseOrderId}/add-patient")]
     public async Task<IActionResult> AddPatientToCase([FromRoute] int caseOrderId, [FromForm] Patient patientDto)
@@ -29,14 +28,12 @@ public class PatientsController : ControllerBase
 
         try
         {
-            // استخراج معرف الطبيب (Dentist ID) من التوكن الحالي المسجل به الدخول
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int dentistId))
             {
                 return Unauthorized(new { message = "التوكن غير صالح أو منتهي الصلاحية." });
             }
 
-            // استدعاء طبقة الخدمة لتنفيذ العملية المترابطة
             var createdPatient = await _patientService.CreatePatientForCaseAsync(dentistId, caseOrderId, patientDto);
 
             return Ok(new

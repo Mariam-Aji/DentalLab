@@ -17,5 +17,6 @@ public interface ICaseOrderRepository
     Task<Patient?> GetPatientByIdAsync(int patientId);
     Task<Patient?> GetPatientWithFilesByIdAsync(int patientId);
     Task<bool> UpdatePatientAsync(Patient patient);
+    //
 
 }

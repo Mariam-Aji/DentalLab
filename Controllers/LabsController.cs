@@ -34,5 +34,6 @@ namespace DentalLab.Api.Controllers
             var result = await _labService.GetDisconnectedLabsAsync();
             return Ok(result);
         }
+        //
     }
 }

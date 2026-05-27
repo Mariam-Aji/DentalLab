@@ -19,5 +19,6 @@ namespace DentalLab.Api.Dtos
         public List<IFormFile>? NewPhotos { get; set; }
 
         public FileType NewPhotosType { get; set; } = FileType.Other;
+        //
     }
 }

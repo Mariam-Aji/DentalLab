@@ -7,3 +7,4 @@ namespace DentalLab.Api.Services
         Task<string> UploadStlToCaseAsync(int caseOrderId, IFormFile file);
     }
 }
+//

@@ -5,3 +5,4 @@ public interface IPatientService
 {
     Task<Patient> CreatePatientForCaseAsync(int dentistId, int caseOrderId, Patient patientDto);
 }
+//

@@ -23,4 +23,5 @@ public class CreateCaseOrderDto
     public bool HasAccessories { get; set; }
 
     public List<IFormFile> RequiredImages { get; set; } = new();
+    //
 }
