@@ -1,4 +1,5 @@
 ﻿using DentalLab.Api.Data;
+using DentalLab.Api.Dtos;
 using DentalLab.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -91,5 +92,47 @@ public class CaseOrderRepository : ICaseOrderRepository
         _context.Patients.Update(patient);
         return await _context.SaveChangesAsync() > 0;
     }
-    //
+    public async Task<List<CaseOrderDetailDto>> GetAllCaseOrdersWithDetailsAsync()
+    {
+        return await _context.CaseOrders
+            .Include(co => co.CreatedBy)
+            .Include(co => co.AssignedLab)
+                .ThenInclude(l => l!.Owner)
+            .Include(co => co.Items)
+            .Select(co => new CaseOrderDetailDto
+            {
+                OrderId = co.Id,
+                Title = co.Title,
+                Status = co.Status.ToString(),
+                ImpressionStage = co.ImpressionStage.ToString(),
+                ImpressionType = co.ImpressionType.ToString(),
+                Shade = co.Shade,
+                IsTemporary = co.IsTemporary,
+                IsUrgent = co.IsUrgent,
+                DeliveryDate = co.DeliveryDate,
+                Notes = co.Notes,
+                EstimatedPrice = co.EstimatedPrice,
+                FinalPrice = co.FinalPrice,
+                CreatedAt = co.CreatedAt,
+                HasAccessories = co.HasAccessories,
+
+                DentistId = co.CreatedById,
+                DentistName = co.CreatedBy!.Name,
+                DentistEmail = co.CreatedBy.Email,
+                DentistPhone = co.CreatedBy.Phone,
+
+                LabId = co.AssignedLabId,
+                LabName = co.AssignedLab != null ? co.AssignedLab.Owner.Name : "لم تُسند لمخبر بعد",
+
+                Items = co.Items.Select(item => new OrderDetailsItemDto
+                {
+                    ItemId = item.Id,
+                    CompensationType = item.CompensationType.ToString(),
+                    ToothNumbers = item.ToothNumbers
+                }).ToList()
+            })
+            .OrderByDescending(co => co.CreatedAt)
+            .ToListAsync();
+    }
 }
+    //

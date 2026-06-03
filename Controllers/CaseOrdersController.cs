@@ -8,7 +8,7 @@ namespace DentalLab.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Dentist")]
+[Authorize(Roles = "Dentist,Admin")]
 public class CaseOrdersController : ControllerBase
 {
     private readonly ICaseOrderService _service;
@@ -162,5 +162,18 @@ public class CaseOrdersController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
-    //
+    [HttpGet("all-with-details")]
+    public async Task<IActionResult> GetAllOrdersWithDetails()
+    {
+        try
+        {
+            var orders = await _service.GetAllOrdersWithDetailsAsync();
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "حدث خطأ أثناء جلب قائمة الطلبيات الشاملة.", error = ex.Message });
+        }
+    }
 }
+    //

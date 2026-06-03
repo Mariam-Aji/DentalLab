@@ -402,6 +402,10 @@ namespace DentalLab.Api.Services
                 }
             }, null);
         }
+        public async Task<List<CaseOrderDetailDto>> GetAllOrdersWithDetailsAsync()
+        {
+            return await _repo.GetAllCaseOrdersWithDetailsAsync();
+        }
         //
     }
 }

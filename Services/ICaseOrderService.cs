@@ -17,7 +17,9 @@ namespace DentalLab.Api.Services
         Task<List<CreatePatientDto>> GetAllPatientsAsync();
         Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId);
         Task<(object? result, string? error)> UpdatePatientDetailsAsync(int patientId, UpdatePatientDto dto, int dentistId);
+        Task<List<CaseOrderDetailDto>> GetAllOrdersWithDetailsAsync();
     }
-
 }
+
+
 //

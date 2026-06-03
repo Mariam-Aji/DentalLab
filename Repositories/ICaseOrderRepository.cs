@@ -1,4 +1,5 @@
-﻿using DentalLab.Api.Models;
+﻿using DentalLab.Api.Dtos;
+using DentalLab.Api.Models;
 
 namespace DentalLab.Api.Repositories;
 
@@ -17,6 +18,7 @@ public interface ICaseOrderRepository
     Task<Patient?> GetPatientByIdAsync(int patientId);
     Task<Patient?> GetPatientWithFilesByIdAsync(int patientId);
     Task<bool> UpdatePatientAsync(Patient patient);
+    Task<List<CaseOrderDetailDto>> GetAllCaseOrdersWithDetailsAsync();
     //
 
 }
