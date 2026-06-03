@@ -64,5 +64,5 @@ public class StatisticsRepository : IStatisticsRepository
             .ThenBy(r => r.Month)
             .ToListAsync();
     }
-    //
+    
 }

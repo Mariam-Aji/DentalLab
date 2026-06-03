@@ -9,6 +9,6 @@ namespace DentalLab.Api.Repositories
         Task<BlogPost?> GetBlogPostWithAttachmentsByIdAsync(int postId);
         Task<bool> UpdateBlogPostAsync(BlogPost post);
         Task<List<BlogPost>> GetBlogPostsByAuthorIdAsync(int authorId);
-        
+       // 
     }
 }

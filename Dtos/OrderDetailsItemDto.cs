@@ -6,4 +6,5 @@
         public string CompensationType { get; set; } = "";
         public List<int> ToothNumbers { get; set; } = new();
     }
+    //
 }

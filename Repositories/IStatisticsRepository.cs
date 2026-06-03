@@ -8,5 +8,5 @@ public interface IStatisticsRepository
 {
     Task<List<LabMonthlyOrdersDto>> GetLabMonthlyOrdersStatisticsAsync();
     Task<List<DentistMonthlyOrdersDto>> GetDentistMonthlyOrdersStatisticsAsync();
-    //
+    
 }

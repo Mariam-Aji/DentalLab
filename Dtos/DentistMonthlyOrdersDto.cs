@@ -7,4 +7,5 @@ public class DentistMonthlyOrdersDto
     public int Year { get; set; }
     public int Month { get; set; }
     public int TotalOrders { get; set; }
+    //
 }

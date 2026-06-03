@@ -22,5 +22,5 @@ public class StatisticsService : IStatisticsService
     {
         return await _repository.GetDentistMonthlyOrdersStatisticsAsync();
     }
-    //
+    
 }
