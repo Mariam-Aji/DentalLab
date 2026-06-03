@@ -39,6 +39,17 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") 
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // ?????? ?????? ??????? ?? ???????? ??? ????? ????????
+    });
+});
+
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection("OtpSettings"));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
@@ -159,6 +170,8 @@ using (var scope = app.Services.CreateScope())
         }
     }
 }
+
+app.UseCors("AllowReactApp");
 
 app.UseHttpsRedirection();
 app.UseStaticFiles(new StaticFileOptions

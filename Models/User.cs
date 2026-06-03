@@ -31,4 +31,5 @@ public class User
     public List<ConnectionRequest> SentConnectionRequests { get; set; } = new();
     public List<Notification> Notifications { get; set; } = new();
     public List<RefreshToken> RefreshTokens { get; set; } = new();
+  
 }
