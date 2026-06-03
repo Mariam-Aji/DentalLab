@@ -20,16 +20,13 @@ public class CaseOrderDetailDto
     public DateTime CreatedAt { get; set; }
     public bool HasAccessories { get; set; }
 
-    // تفاصيل الطبيب
     public int DentistId { get; set; }
     public string DentistName { get; set; } = null!;
     public string DentistEmail { get; set; } = null!;
     public string? DentistPhone { get; set; }
 
-    // تفاصيل المخبر
     public int? LabId { get; set; }
     public string? LabName { get; set; }
 
-    // 👈 تأكدي أن هذا السطر يعتمد على النوع الجديد كلياً هنا
     public List<OrderDetailsItemDto> Items { get; set; } = new();
 }

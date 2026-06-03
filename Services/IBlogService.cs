@@ -9,5 +9,5 @@ namespace DentalLab.Api.Services
         Task<(BlogPostResponseDto? result, string? error)> UpdateDoctorPostAsync(int postId, UpdatePostDto dto, int doctorId);
         Task<List<BlogPostResponseDto>> GetDoctorPostsAsync(int doctorId);
     }
-    //
+    
 }

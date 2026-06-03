@@ -40,6 +40,6 @@ namespace DentalLab.Api.Repositories
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
         }
-        //
+        
     }
 }

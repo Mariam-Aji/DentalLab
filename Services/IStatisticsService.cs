@@ -8,4 +8,5 @@ public interface IStatisticsService
 {
     Task<List<LabMonthlyOrdersDto>> GetLabMonthlyOrdersChartDataAsync();
     Task<List<DentistMonthlyOrdersDto>> GetDentistMonthlyOrdersChartDataAsync();
+    //
 }

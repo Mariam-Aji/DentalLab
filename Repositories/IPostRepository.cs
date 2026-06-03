@@ -7,4 +7,5 @@ public interface IPostRepository
 {
     Task<BlogPost?> GetPostByIdAsync(int postId);
     Task DeletePostAsync(BlogPost post);
+
 }
