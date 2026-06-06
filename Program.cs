@@ -30,15 +30,11 @@ builder.Services.AddSignalR();
 // ? ?? ??????? 2: ????? ????? CORS ????? ???? ?????? ?? ?? ???? ?? Live Server ????
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLiveServer", policy =>
-    {
-        policy.SetIsOriginAllowed(origin => true) // ???? ??? ??? ???? (Localhost / 127.0.0.1)
-              .AllowAnyHeader()
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin()
               .AllowAnyMethod()
-              .AllowCredentials();
-    });
+              .AllowAnyHeader());
 });
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -87,6 +83,11 @@ builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IStatisticsRepository, StatisticsRepository>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+
+builder.Services.AddScoped<IAdvertisementRepository, AdvertisementRepository>();
+
+
+builder.Services.AddScoped<IAdvertisementService, AdvertisementService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -170,7 +171,7 @@ using (var scope = app.Services.CreateScope())
         }
     }
 }
-
+app.UseCors("AllowAll");
 app.UseCors("AllowReactApp");
 
 app.UseHttpsRedirection();

@@ -72,12 +72,16 @@ public class BlogService : IBlogService
 
         var savedPost = await _blogRepo.SaveBlogPostAsync(blogPost);
 
+       
+        var completePost = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(savedPost.Id);
+
         var adminId = await _blogRepo.GetAdminIdAsync();
         if (adminId.HasValue)
         {
             await _blogRepo.SaveNotificationAsync(new Notification
             {
                 RecipientId = adminId.Value,
+                BlogPostId = savedPost.Id,
                 Message = $"طلب موافقة: قام الطبيب بكتابة منشور جديد بعنوان '{savedPost.Title}' بانتظار مراجعتك.",
                 Type = NotificationType.StatusChanged,
                 IsRead = false
@@ -91,6 +95,7 @@ public class BlogService : IBlogService
             Content = savedPost.Content,
             Type = savedPost.Type.ToString(),
             AuthorId = savedPost.AuthorId,
+            AuthorName = completePost?.Author != null ? completePost.Author.Name : "طبيب معروف", // 🎯 إظهار اسم الكاتب المطلوب
             IsSensitiveRedacted = savedPost.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "المنشور معلق بانتظار موافقة الأدمن ليتم نشره في العلن.",
@@ -132,7 +137,8 @@ public class BlogService : IBlogService
 
         await _blogRepo.SaveNotificationAsync(new Notification
         {
-            RecipientId = targetDoctorId, 
+            RecipientId = targetDoctorId,
+            BlogPostId = post.Id,
             Message = $"🎉 تهانينا! تمت الموافقة على نشر منشورك بعنوان '{postTitle}' وهو متاح للعامة الآن.",
             Type = NotificationType.StatusChanged,
             IsRead = false
@@ -200,6 +206,7 @@ public class BlogService : IBlogService
         await _blogRepo.SaveNotificationAsync(new Notification
         {
             RecipientId = targetDoctorId,
+            BlogPostId = null, 
             Message = $"🛑 نعتذر منك، لقد تم رفض نشر مقالك الطبي المعنون بـ '{postTitle}' لمخالفته شروط المراجعة وتم حذفه.",
             Type = NotificationType.StatusChanged,
             IsRead = false
@@ -222,6 +229,7 @@ public class BlogService : IBlogService
                 Content = post.Content,
                 Type = post.Type.ToString(),
                 AuthorId = post.AuthorId,
+                AuthorName = post.Author != null ? post.Author.Name : "طبيب معروف",
                 IsSensitiveRedacted = post.IsSensitiveRedacted,
                 Status = post.Status.ToString(),
                 ReviewMessage = post.Status == BlogPostStatus.Pending ? "معلق بانتظار المراجعة" : "منشور علني ومقبول",
@@ -280,6 +288,7 @@ public class BlogService : IBlogService
             await _blogRepo.SaveNotificationAsync(new Notification
             {
                 RecipientId = adminId.Value,
+                BlogPostId = post.Id, 
                 Message = $"تحديث موافقة: قام الطبيب بتعديل منشوره بعنوان '{post.Title}' وهو بانتظار مراجعتك مجدداً.",
                 Type = NotificationType.StatusChanged,
                 IsRead = false
@@ -293,6 +302,7 @@ public class BlogService : IBlogService
             Content = post.Content,
             Type = post.Type.ToString(),
             AuthorId = post.AuthorId,
+            AuthorName = post.Author != null ? post.Author.Name : "طبيب معروف",
             IsSensitiveRedacted = post.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "تم تعديل المنشور بنجاح وإعادته للمراجعة معلقاً.",

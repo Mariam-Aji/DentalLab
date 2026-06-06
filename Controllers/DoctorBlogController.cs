@@ -138,8 +138,8 @@ namespace DentalLab.Api.Controllers
                 return StatusCode(500, new { message = "حدث خطأ داخلي أثناء معالجة رفض المنشور.", error = ex.Message });
             }
         }
-        [Authorize(Roles = "Admin,Dentist")] 
-        [HttpGet("notifications")] 
+        [Authorize(Roles = "Admin,Dentist")]
+        [HttpGet("notifications")]
         public async Task<IActionResult> GetDoctorNotifications()
         {
             try
@@ -148,7 +148,17 @@ namespace DentalLab.Api.Controllers
 
                 var notifications = await _blogService.GetNotificationsByRecipientIdAsync(currentUserId);
 
-                return Ok(notifications);
+                var result = notifications.Select(n => new NotificationResponseDto
+                {
+                    Id = n.Id,
+                    RecipientId = n.RecipientId,
+                    Message = n.Message,
+                    CreatedAt = n.CreatedAt,
+                    BlogPostId = n.BlogPostId,
+                    BlogPostType = n.BlogPost != null ? n.BlogPost.Type.ToString() : null
+                }).ToList();
+
+                return Ok(result);
             }
             catch (Exception ex)
             {

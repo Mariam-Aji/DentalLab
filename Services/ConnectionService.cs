@@ -46,7 +46,7 @@ namespace DentalLab.Api.Services
                         RecipientId = labOwnerUserId.Value,
                         Type = NotificationType.InfoRequested, 
                         Message = "لديك طلب متابعة اتصال جديد من أحد الأطباء، يرجى مراجعته وقبوله.",
-                        IsRead = false,
+                      
                         CreatedAt = DateTime.UtcNow
                     };
 

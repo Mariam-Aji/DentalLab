@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DentalLab.Api.Models;
 
@@ -16,4 +17,8 @@ public class Notification
 
     // Navigation
     public User Recipient { get; set; } = null!;
+    public int? BlogPostId { get; set; }
+
+    [ForeignKey(nameof(BlogPostId))]
+    public BlogPost? BlogPost { get; set; }
 }

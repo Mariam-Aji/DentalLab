@@ -28,30 +28,44 @@ public class ApplicationDbContext : DbContext
     public DbSet<EmailOtp> EmailOtps { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<LabScanSlot> LabScanSlots { get; set; }
+    public DbSet<Advertisement> Advertisements { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
-    //    modelBuilder.Entity<LabScanSlot>()
-    //.HasOne(x => x.Lab)
-    //.WithMany(l => l.ScanSlots)
-    //.HasForeignKey(x => x.LabId)
-    //.OnDelete(DeleteBehavior.Cascade);
-    //    modelBuilder.Entity<LabScanSlot>()
-    //.HasOne(x => x.Booking)
-    //.WithOne(x => x.Slot)
-    //.HasForeignKey<ScanVisitRequest>(x => x.LabScanSlotId)
-    //.OnDelete(DeleteBehavior.Cascade);
-    //    modelBuilder.Entity<ScanVisitRequest>()
-    //.HasOne(x => x.Lab)
-    //.WithMany(l => l.ScanVisitRequests)
-    //.HasForeignKey(x => x.LabId)
-    //.OnDelete(DeleteBehavior.Restrict);
-    //    modelBuilder.Entity<User>()
-    //        .Property(u => u.Role)
-    //        .HasConversion<string>();
+        //    modelBuilder.Entity<LabScanSlot>()
+        //.HasOne(x => x.Lab)
+        //.WithMany(l => l.ScanSlots)
+        //.HasForeignKey(x => x.LabId)
+        //.OnDelete(DeleteBehavior.Cascade);
+        //    modelBuilder.Entity<LabScanSlot>()
+        //.HasOne(x => x.Booking)
+        //.WithOne(x => x.Slot)
+        //.HasForeignKey<ScanVisitRequest>(x => x.LabScanSlotId)
+        //.OnDelete(DeleteBehavior.Cascade);
+        //    modelBuilder.Entity<ScanVisitRequest>()
+        //.HasOne(x => x.Lab)
+        //.WithMany(l => l.ScanVisitRequests)
+        //.HasForeignKey(x => x.LabId)
+        //.OnDelete(DeleteBehavior.Restrict);
+        //    modelBuilder.Entity<User>()
+        //        .Property(u => u.Role)
+        //        .HasConversion<string>();
+        modelBuilder.Entity<Advertisement>()
+        .Property(a => a.Target)
+        .HasConversion<int>();
+        base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.BlogPost)                  
+            .WithMany()                                  
+            .HasForeignKey(n => n.BlogPostId)  ;           
+        modelBuilder.Entity<Advertisement>()
+                .HasOne(a => a.User)                 
+                .WithMany(u => u.Advertisements)    
+                .HasForeignKey(a => a.UserId)        
+                .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<User>()
             .Property(u => u.Status)
             .HasConversion<string>();

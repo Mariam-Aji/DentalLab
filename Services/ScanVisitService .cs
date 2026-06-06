@@ -70,7 +70,7 @@ public class ScanVisitService : IScanVisitService
                 RecipientId = labOwner.Id,
                 Type = NotificationType.ScanVisitConfirmed, 
                 Message = $"تم حجز موعد زيارة فحص جديدة للمخبر الخاص بك بتاريخ {slot.Date:yyyy-MM-dd} في تمام الساعة {slot.Time:hh\\:mm} {slot.Period}.",
-                IsRead = false,
+                //IsRead = false,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -84,7 +84,7 @@ public class ScanVisitService : IScanVisitService
     public async Task<List<Notification>> GetLabNotificationsAsync(int labOwnerId)
     {
         return await _context.Notifications
-            .Where(n => n.RecipientId == labOwnerId && !n.IsRead)
+            //.Where(n => n.RecipientId == labOwnerId && !n.IsRead)
             .OrderByDescending(n => n.CreatedAt)
             .ToListAsync();
     }

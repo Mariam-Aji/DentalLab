@@ -4,6 +4,7 @@ using DentalLab.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalLab.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260605234638_AddAdvertisementsTable")]
+    partial class AddAdvertisementsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -45,12 +48,6 @@ namespace DentalLab.Api.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
-
-                    b.Property<decimal?>("Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Target")
-                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -474,9 +471,6 @@ namespace DentalLab.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("BlogPostId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -495,8 +489,6 @@ namespace DentalLab.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BlogPostId");
 
                     b.HasIndex("RecipientId");
 
@@ -910,17 +902,11 @@ namespace DentalLab.Api.Migrations
 
             modelBuilder.Entity("DentalLab.Api.Models.Notification", b =>
                 {
-                    b.HasOne("DentalLab.Api.Models.BlogPost", "BlogPost")
-                        .WithMany()
-                        .HasForeignKey("BlogPostId");
-
                     b.HasOne("DentalLab.Api.Models.User", "Recipient")
                         .WithMany("Notifications")
                         .HasForeignKey("RecipientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("BlogPost");
 
                     b.Navigation("Recipient");
                 });
