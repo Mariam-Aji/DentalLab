@@ -355,4 +355,41 @@ public class AdvertisementController : ControllerBase
             return StatusCode(500, new { message = "حدث خطأ داخلي أثناء معالجة اعتماد الإعلان وتحديد القيمة المالية.", error = ex.Message });
         }
     }
+    [Authorize(Roles = "Admin")]
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        try
+        {
+            var users = await _advService.GetAllUsersAsync();
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"حدث خطأ أثناء جلب المستخدمين: {ex.Message}");
+        }
+    }
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateUser(int id, [FromForm] UpdateUserDto dto)
+    {
+        var (result, error) = await _advService.UpdateUserAsync(id, dto);
+
+        if (error != null) return BadRequest(new { message = error });
+        return Ok(result);
+    }
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var (success, error) = await _advService.DeleteUserAsync(id);
+
+        if (!success)
+        {
+            return BadRequest(new { message = error });
+        }
+
+        return Ok(new { message = "تم حذف المستخدم بنجاح." });
+    }
+
 }

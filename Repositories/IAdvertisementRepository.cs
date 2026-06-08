@@ -17,4 +17,10 @@ public interface IAdvertisementRepository
     Task<bool> SaveNotificationAsync(Notification notification);
     Task<Advertisement?> GetByIdAsync(int id);
     Task<bool> SaveChangesStatusAsync(Advertisement advertisement);
+    Task<List<Advertisement>> GetAdvertisementsByUserIdAsync(int userId);
+    Task<List<User>> GetAllUsersAsync();
+    Task<User?> GetUserByIdAsync(int userId);
+    Task<bool> UpdateUserAsync(User user);
+    Task<bool> DeleteUserAsync(User user);
+    Task<List<User>> SearchLabsByNameAsync(string labName);
 }

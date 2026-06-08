@@ -104,4 +104,44 @@ public class AdvertisementRepository : IAdvertisementRepository
         _context.Advertisements.Update(advertisement);
         return await _context.SaveChangesAsync() > 0;
     }
+    public async Task<List<User>> GetAllUsersAsync()
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<List<Advertisement>> GetAdvertisementsByUserIdAsync(int userId)
+    {
+        return await _context.Advertisements
+            .AsNoTracking()
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<User?> GetUserByIdAsync(int userId)
+    {
+        return await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    }
+
+    public async Task<bool> UpdateUserAsync(User user)
+    {
+        _context.Users.Update(user);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<bool> DeleteUserAsync(User user)
+    {
+        _context.Users.Remove(user);
+        return await _context.SaveChangesAsync() > 0;
+    }
+    public async Task<List<User>> SearchLabsByNameAsync(string labName)
+    {
+        return await _context.Users
+            .Include(u => u.LabProfile) 
+            .Where(u => u.Role == UserRole.Lab &&
+                        u.NamePlace != null &&
+                        u.NamePlace.Contains(labName))
+            .ToListAsync();
+    }
 }

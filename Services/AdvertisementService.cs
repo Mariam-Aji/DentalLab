@@ -322,7 +322,6 @@ public class AdvertisementService : IAdvertisementService
                     ? savedAdv.ImageUrl.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList()
                     : new List<string>();
 
-                // بناء هيكلية الـ JSON بالكامل لتطابق شكل استجابة الطلب تماماً
                var notificationPayload = new
 {
     message = "تم تقديم طلب الإعلان بنجاح، وتم إرسال محتواه بالكامل إلى الأدمن للمراجعة والتفعيل.",
@@ -334,16 +333,13 @@ public class AdvertisementService : IAdvertisementService
         userId = savedAdv.UserId,
         isActive = savedAdv.IsActive,
         createdAt = savedAdv.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"),
-        // التعديل هنا: التعامل مع الـ Nullable DateTime بأمان
         expiresAt = savedAdv.ExpiresAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
         images = responseImages
     }
 };
 
-// الحفاظ على تشفير الحروف والكلمات العربية لتخزينها بشكل مقروء
 var jsonOptions = new JsonSerializerOptions
 {
-    // التعديل هنا: استخدام الـ Namespace الصحيح للـ Encoder
     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Create(UnicodeRanges.All),
     WriteIndented = true
 };
@@ -353,7 +349,7 @@ var jsonOptions = new JsonSerializerOptions
                 var notification = new Notification
                 {
                     RecipientId = admin.Id,
-                    Message = jsonMessage, // إسناد نص الـ JSON الكامل كرسالة
+                    Message = jsonMessage,
                     Type = NotificationType.StatusChanged,
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
@@ -378,7 +374,6 @@ var jsonOptions = new JsonSerializerOptions
             return (false, "الإعلان المطلوب غير موجود.");
         }
 
-        // التحقق من توافق الإعلان مع معرف الطبيب الممرر بالـ Route لضمان أمان البيانات
         if (advertisement.UserId != userId)
         {
             return (false, "هذا الإعلان لا ينتمي للطبيب الممرر المعرف الخاص به.");
@@ -389,14 +384,11 @@ var jsonOptions = new JsonSerializerOptions
             return (false, "هذا الإعلان نشط بالفعل ومقبول سابقاً في النظام.");
         }
 
-        // 🎯 التعديل الجديد: تخزين السعر المحتسب والمحدد من قبل الأدمن في حقل الـ Price المضاف حديثاً
         advertisement.Price = price;
 
-        // يبقى غير منشور بناءً على طلبكِ إلى حين الدفع الفعلي من قبل الطبيب
         advertisement.IsActive = false;
         advertisement.CreatedAt = DateTime.UtcNow;
 
-        // حفظ التعديلات الجديدة (بما فيها السعر وحالة النشاط ووقت التحديث) في قاعدة البيانات
         var isSaved = await _advRepo.SaveChangesStatusAsync(advertisement);
         if (!isSaved)
         {
@@ -405,10 +397,9 @@ var jsonOptions = new JsonSerializerOptions
 
         try
         {
-            // إنشاء وإرسال إشعار القبول المشروط بالقيمة المالية للطبيب
             var doctorNotification = new Notification
             {
-                RecipientId = userId, // معرف الطبيب المستلم
+                RecipientId = userId, 
                 Message = $"✅ تمت الموافقة على محتوى إعلانك بعنوان: '{advertisement.Title}'. يرجى سداد مبلغ ({price}) لتفعيل الإعلان ونشره رسمياً داخل التطبيق. علمًا أن الإعلان سيبقى غير منشور حتى إتمام الدفع.",
                 Type = NotificationType.StatusChanged,
                 IsRead = false,
@@ -419,9 +410,61 @@ var jsonOptions = new JsonSerializerOptions
         }
         catch
         {
-            // وضعها داخل catch فارغة لضمان عدم توقف العملية الأساسية في حال وجود مشكلة عابرة بجدول الإشعارات
         }
 
         return (true, null);
+    }
+    public async Task<List<Advertisement>> GetAdvertisementsByUserIdAsync(int userId)
+    {
+        return await _advRepo.GetAdvertisementsByUserIdAsync(userId);
+    }
+
+    public async Task<List<User>> GetAllUsersAsync()
+    {
+        return await _advRepo.GetAllUsersAsync();
+    }
+    public async Task<(User? result, string? error)> UpdateUserAsync(int userId, UpdateUserDto dto)
+    {
+        var user = await _advRepo.GetUserByIdAsync(userId);
+        if (user == null) return (null, "المستخدم غير موجود.");
+
+        if (!string.IsNullOrEmpty(dto.Name)) user.Name = dto.Name;
+        if (!string.IsNullOrEmpty(dto.Phone)) user.Phone = dto.Phone;
+        if (!string.IsNullOrEmpty(dto.NamePlace)) user.NamePlace = dto.NamePlace;
+        if (!string.IsNullOrEmpty(dto.AddressPlace)) user.AddressPlace = dto.AddressPlace;
+        if (!string.IsNullOrEmpty(dto.CityPlace)) user.CityPlace = dto.CityPlace;
+        if (!string.IsNullOrEmpty(dto.CountryPlace)) user.CountryPlace = dto.CountryPlace;
+
+        var isUpdated = await _advRepo.UpdateUserAsync(user);
+        return isUpdated ? (user, null) : (null, "فشل حفظ التعديلات.");
+    }
+
+    public async Task<(bool success, string? error)> DeleteUserAsync(int userId)
+    {
+        var user = await _advRepo.GetUserByIdAsync(userId);
+        if (user == null) return (false, "المستخدم غير موجود.");
+
+        var isDeleted = await _advRepo.DeleteUserAsync(user);
+        return isDeleted ? (true, null) : (false, "فشل حذف المستخدم.");
+    }
+    public async Task<List<object>> SearchLabsAsync(string name)
+    {
+        var labs = await _advRepo.SearchLabsByNameAsync(name);
+
+        return labs.Select(u => new
+        {
+            u.Id,
+            u.Name,
+            u.NamePlace,
+            u.AddressPlace,
+            u.CityPlace,
+            u.CountryPlace,
+            LabDetails = u.LabProfile != null ? new
+            {
+                u.LabProfile.YearsOfExperience,
+                u.LabProfile.Specialties,
+                u.LabProfile.Materials
+            } : null
+        }).Cast<object>().ToList();
     }
 }
