@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalLab.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260511051424_Notification")]
-    partial class Notification
+    [Migration("20260518174913__Initial")]
+    partial class _Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -106,7 +106,7 @@ namespace DentalLab.Api.Migrations
                     b.Property<int?>("PatientId")
                         .HasColumnType("int");
 
-                    b.PrimitiveCollection<string>("RequiredImages")
+                    b.Property<string>("RequiredImages")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
