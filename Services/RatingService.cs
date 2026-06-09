@@ -92,4 +92,5 @@ public class RatingService : IRatingService
     {
         return await _ratingRepository.GetLabsByScanVisitServiceAsync();
     }
+    //
 }

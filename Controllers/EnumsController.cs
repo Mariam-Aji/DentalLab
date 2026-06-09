@@ -33,9 +33,9 @@ public class EnumsController : ControllerBase
     public IActionResult GetImpressionType()
         => Ok(Enum.GetNames<ImpressionType>());
 
-    [HttpGet("scan-visit-status")]
-    public IActionResult GetScanVisitStatus()
-        => Ok(Enum.GetNames<ScanVisitStatus>());
+    //[HttpGet("scan-visit-status")]
+    //public IActionResult GetScanVisitStatus()
+    //    => Ok(Enum.GetNames<ScanVisitStatus>());
 
     [HttpGet("notification-type")]
     public IActionResult GetNotificationType()

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 public interface ILabRepository
 {
     Task<IEnumerable<Lab>> GetAllLabsWithOwnersAsync();
-    // توابع التصفية
+  
     Task<IEnumerable<Lab>> GetLabsByAvailabilityAsync(AvailabilityStatus status);
 
 }

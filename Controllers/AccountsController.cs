@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 
 namespace DentalLab.Api.Controllers;
-//controller
+
 [ApiController]
 [Route("api/[controller]")]
 public class AccountsController : ControllerBase

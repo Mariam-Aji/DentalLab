@@ -1,4 +1,5 @@
-﻿using DentalLab.Api.Models;
+﻿using DentalLab.Api.Dtos;
+using DentalLab.Api.Models;
 
 namespace DentalLab.Api.Repositories;
 
@@ -10,4 +11,14 @@ public interface ICaseOrderRepository
     Task AddOrderItemAsync(CaseOrderItem item);
     Task<LabPrice?> GetUnitPriceAsync(int labId, CompensationType type);
     Task<bool> IsDentistConnectedToLab(int dentistId, int labId);
+    Task<CaseOrder?> GetOrderWithItemsAsync(int orderId);
+    Task<LabPrice?> GetLabPriceAsync(int labId, CompensationType type);
+    Task<bool> AddPatientAndBindToOrderAsync(CaseOrder order, Patient patient);
+    Task<List<Patient>> GetAllPatientsAsync();
+    Task<Patient?> GetPatientByIdAsync(int patientId);
+    Task<Patient?> GetPatientWithFilesByIdAsync(int patientId);
+    Task<bool> UpdatePatientAsync(Patient patient);
+    Task<List<CaseOrderDetailDto>> GetAllCaseOrdersWithDetailsAsync();
+    //
+
 }

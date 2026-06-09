@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Linq;
 using System.Text.Json;
 
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalLab.Api.Data;
 
 public class ApplicationDbContext : DbContext
@@ -26,24 +27,45 @@ public class ApplicationDbContext : DbContext
     public DbSet<FileResource> FileResources { get; set; }
     public DbSet<EmailOtp> EmailOtps { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
-
+    public DbSet<LabScanSlot> LabScanSlots { get; set; }
+    public DbSet<Advertisement> Advertisements { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+        //    modelBuilder.Entity<LabScanSlot>()
+        //.HasOne(x => x.Lab)
+        //.WithMany(l => l.ScanSlots)
+        //.HasForeignKey(x => x.LabId)
+        //.OnDelete(DeleteBehavior.Cascade);
+        //    modelBuilder.Entity<LabScanSlot>()
+        //.HasOne(x => x.Booking)
+        //.WithOne(x => x.Slot)
+        //.HasForeignKey<ScanVisitRequest>(x => x.LabScanSlotId)
+        //.OnDelete(DeleteBehavior.Cascade);
+        //    modelBuilder.Entity<ScanVisitRequest>()
+        //.HasOne(x => x.Lab)
+        //.WithMany(l => l.ScanVisitRequests)
+        //.HasForeignKey(x => x.LabId)
+        //.OnDelete(DeleteBehavior.Restrict);
+        //    modelBuilder.Entity<User>()
+        //        .Property(u => u.Role)
+        //        .HasConversion<string>();
+        modelBuilder.Entity<Advertisement>()
+        .Property(a => a.Target)
+        .HasConversion<int>();
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<CaseOrder>()
-            .Property(e => e.RequiredImages)
-            .HasConversion(
-                v => string.Join(';', v), // ????? ??????? ??? ??? ?????: "url1;url2"
-                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList() // ????? ???? ?????? ??? ???????
-            );
-        modelBuilder.Entity<User>()
-            .Property(u => u.Role)
-            .HasConversion<string>();
-
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.BlogPost)                  
+            .WithMany()                                  
+            .HasForeignKey(n => n.BlogPostId)  ;           
+        modelBuilder.Entity<Advertisement>()
+                .HasOne(a => a.User)                 
+                .WithMany(u => u.Advertisements)    
+                .HasForeignKey(a => a.UserId)        
+                .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<User>()
             .Property(u => u.Status)
             .HasConversion<string>();
@@ -148,21 +170,26 @@ public class ApplicationDbContext : DbContext
             .Property(t => t.DefaultImpression)
             .HasConversion<string>();
 
-        modelBuilder.Entity<ScanVisitRequest>()
-            .HasOne(s => s.Lab)
-            .WithMany()
-            .HasForeignKey(s => s.LabId)
-            .OnDelete(DeleteBehavior.Cascade);
+      
+        modelBuilder.Entity<LabScanSlot>()
+                .HasOne(slot => slot.Lab)          // ?????? ???? ????? ???? ????
+                .WithMany(lab => lab.ScanSlots)    // ?????? ????? ???? ?? ???? (ScanSlots)
+                .HasForeignKey(slot => slot.LabId) // ????? ??? ??????? ??????? ?? ???? ????????
+                .OnDelete(DeleteBehavior.Cascade); // ??? ?? ??? ???????? ??? ??? ???? ??????? ???????? ?? ??? database
 
+        // ??? ????? ????? ?? ?????? (?? ????? ??? IsUnique ? Multiplicity)
         modelBuilder.Entity<ScanVisitRequest>()
-            .HasOne(s => s.Dentist)
+            .HasOne(request => request.Slot)
             .WithMany()
-            .HasForeignKey(s => s.DentistId)
+            .HasForeignKey(request => request.LabScanSlotId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // ????? ????? ???????? ?? ?????? ????? ???????? ???????? (Multiple Cascade Paths)
         modelBuilder.Entity<ScanVisitRequest>()
-            .Property(s => s.Status)
-            .HasConversion<string>();
+            .HasOne(request => request.Lab)
+            .WithMany(lab => lab.ScanVisitRequests)
+            .HasForeignKey(request => request.LabId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Notification>()
             .Property(n => n.Type)

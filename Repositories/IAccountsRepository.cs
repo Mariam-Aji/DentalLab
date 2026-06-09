@@ -1,7 +1,7 @@
 using DentalLab.Api.Models;
 
 namespace DentalLab.Api.Repositories;
-//
+
 public interface IAccountsRepository
 {
     Task<bool> EmailExistsAsync(string email);

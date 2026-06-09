@@ -1,7 +1,7 @@
 using DentalLab.Api.Models;
 using System;
 using System.Collections.Generic;
-//
+
 namespace DentalLab.Api.Services
 {
     public class ConnectionForLabService : IConnectionForLabService

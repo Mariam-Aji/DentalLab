@@ -1,6 +1,6 @@
 using DentalLab.Api.Dtos;
 using DentalLab.Api.Models;
-//
+
 namespace DentalLab.Api.Services;
 
 public interface IAccountService

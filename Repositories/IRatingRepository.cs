@@ -13,6 +13,7 @@ namespace DentalLab.Api.Repositories
         Task<User?> GetUserByIdAsync(int userId);
         Task<object?> GetLabFullDetailsAsync(int labId);
         Task<List<object>> GetLabsByScanVisitServiceAsync();
+        //
     }
 
 }

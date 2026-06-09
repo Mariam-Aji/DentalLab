@@ -22,6 +22,50 @@ namespace DentalLab.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("DentalLab.Api.Models.Advertisement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Target")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Advertisements");
+                });
+
             modelBuilder.Entity("DentalLab.Api.Models.BlogPost", b =>
                 {
                     b.Property<int>("Id")
@@ -42,6 +86,9 @@ namespace DentalLab.Api.Migrations
 
                     b.Property<bool>("IsSensitiveRedacted")
                         .HasColumnType("bit");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -87,6 +134,9 @@ namespace DentalLab.Api.Migrations
                     b.Property<bool>("HasAccessories")
                         .HasColumnType("bit");
 
+                    b.Property<int>("ImpressionStage")
+                        .HasColumnType("int");
+
                     b.Property<string>("ImpressionType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -103,7 +153,7 @@ namespace DentalLab.Api.Migrations
                     b.Property<int?>("PatientId")
                         .HasColumnType("int");
 
-                    b.Property<string>("RequiredImages")
+                    b.PrimitiveCollection<string>("RequiredImages")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -346,6 +396,39 @@ namespace DentalLab.Api.Migrations
                     b.ToTable("LabPrices");
                 });
 
+            modelBuilder.Entity("DentalLab.Api.Models.LabScanSlot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsBooked")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Period")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("Time")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LabId");
+
+                    b.ToTable("LabScanSlots");
+                });
+
             modelBuilder.Entity("DentalLab.Api.Models.LabSubscriptionPayment", b =>
                 {
                     b.Property<int>("Id")
@@ -391,6 +474,9 @@ namespace DentalLab.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BlogPostId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -409,6 +495,8 @@ namespace DentalLab.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BlogPostId");
 
                     b.HasIndex("RecipientId");
 
@@ -519,39 +607,6 @@ namespace DentalLab.Api.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("DentalLab.Api.Models.ScanVisitRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("DentistId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LabId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ScheduledAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DentistId");
-
-                    b.HasIndex("LabId");
-
-                    b.ToTable("ScanVisitRequests");
-                });
-
             modelBuilder.Entity("DentalLab.Api.Models.Template", b =>
                 {
                     b.Property<int>("Id")
@@ -634,9 +689,8 @@ namespace DentalLab.Api.Migrations
                     b.Property<string>("Phone")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -651,6 +705,55 @@ namespace DentalLab.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ScanVisitRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DentistId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LabId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LabScanSlotId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("LabScanSlotId1")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DentistId");
+
+                    b.HasIndex("LabId");
+
+                    b.HasIndex("LabScanSlotId");
+
+                    b.HasIndex("LabScanSlotId1")
+                        .IsUnique()
+                        .HasFilter("[LabScanSlotId1] IS NOT NULL");
+
+                    b.ToTable("ScanVisitRequests");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.Advertisement", b =>
+                {
+                    b.HasOne("DentalLab.Api.Models.User", "User")
+                        .WithMany("Advertisements")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.BlogPost", b =>
@@ -783,6 +886,17 @@ namespace DentalLab.Api.Migrations
                     b.Navigation("Lab");
                 });
 
+            modelBuilder.Entity("DentalLab.Api.Models.LabScanSlot", b =>
+                {
+                    b.HasOne("DentalLab.Api.Models.Lab", "Lab")
+                        .WithMany("ScanSlots")
+                        .HasForeignKey("LabId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Lab");
+                });
+
             modelBuilder.Entity("DentalLab.Api.Models.LabSubscriptionPayment", b =>
                 {
                     b.HasOne("DentalLab.Api.Models.Lab", "Lab")
@@ -796,11 +910,17 @@ namespace DentalLab.Api.Migrations
 
             modelBuilder.Entity("DentalLab.Api.Models.Notification", b =>
                 {
+                    b.HasOne("DentalLab.Api.Models.BlogPost", "BlogPost")
+                        .WithMany()
+                        .HasForeignKey("BlogPostId");
+
                     b.HasOne("DentalLab.Api.Models.User", "Recipient")
                         .WithMany("Notifications")
                         .HasForeignKey("RecipientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("BlogPost");
 
                     b.Navigation("Recipient");
                 });
@@ -835,23 +955,35 @@ namespace DentalLab.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("DentalLab.Api.Models.ScanVisitRequest", b =>
+            modelBuilder.Entity("ScanVisitRequest", b =>
                 {
                     b.HasOne("DentalLab.Api.Models.User", "Dentist")
                         .WithMany()
                         .HasForeignKey("DentistId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("DentalLab.Api.Models.Lab", "Lab")
-                        .WithMany()
+                        .WithMany("ScanVisitRequests")
                         .HasForeignKey("LabId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("DentalLab.Api.Models.LabScanSlot", "Slot")
+                        .WithMany()
+                        .HasForeignKey("LabScanSlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DentalLab.Api.Models.LabScanSlot", null)
+                        .WithOne("Booking")
+                        .HasForeignKey("ScanVisitRequest", "LabScanSlotId1");
 
                     b.Navigation("Dentist");
 
                     b.Navigation("Lab");
+
+                    b.Navigation("Slot");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.BlogPost", b =>
@@ -878,7 +1010,16 @@ namespace DentalLab.Api.Migrations
 
                     b.Navigation("Ratings");
 
+                    b.Navigation("ScanSlots");
+
+                    b.Navigation("ScanVisitRequests");
+
                     b.Navigation("SubscriptionPayments");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.LabScanSlot", b =>
+                {
+                    b.Navigation("Booking");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.Patient", b =>
@@ -890,6 +1031,8 @@ namespace DentalLab.Api.Migrations
 
             modelBuilder.Entity("DentalLab.Api.Models.User", b =>
                 {
+                    b.Navigation("Advertisements");
+
                     b.Navigation("CreatedCases");
 
                     b.Navigation("LabProfile");

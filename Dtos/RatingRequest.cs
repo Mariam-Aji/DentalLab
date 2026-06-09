@@ -5,5 +5,6 @@
         public int LabId { get; set; }
         public int Quality { get; set; }    
         public int TimeScore { get; set; }
+        //
     }
 }

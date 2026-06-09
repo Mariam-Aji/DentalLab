@@ -8,3 +8,4 @@
     Task<object?> GetLabProfileDetailsAsync(int labId);
     Task<List<object>> GetLabsWithScanServiceAsync();
 }
+//

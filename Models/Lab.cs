@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace DentalLab.Api.Models;
 
 public enum AvailabilityStatus { Available, Busy, NotAvailable }
-//
+
 public class Lab
 {
     [Key]
@@ -29,4 +29,6 @@ public class Lab
     public List<ConnectionRequest> ConnectionRequests { get; set; } = new();
     public List<LabSubscriptionPayment> SubscriptionPayments { get; set; } = new();
     public List<FileResource> Gallery { get; set; } = new();
+    public List<LabScanSlot> ScanSlots { get; set; } = new();
+    public List<ScanVisitRequest> ScanVisitRequests { get; set; } = new(); // ?????? ?????? ????? ??????
 }

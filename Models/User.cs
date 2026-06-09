@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DentalLab.Api.Models;
 
-public enum UserRole { Dentist, Lab, Admin }
+public enum UserRole { Dentist, Lab, Admin,ADSClient }
 public enum AccountStatus { PendingVerification, PendingAdminApproval, Active, ReadOnly, Suspended }
 
 public class User
@@ -25,10 +25,12 @@ public class User
     public string? VerificationDocumentPath { get; set; }
     public DateTime? EmailVerifiedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public List<Advertisement> Advertisements { get; set; } = new();
     // Navigation
     public List<CaseOrder> CreatedCases { get; set; } = new();
     public Lab? LabProfile { get; set; }
     public List<ConnectionRequest> SentConnectionRequests { get; set; } = new();
     public List<Notification> Notifications { get; set; } = new();
     public List<RefreshToken> RefreshTokens { get; set; } = new();
+  
 }
