@@ -9,7 +9,7 @@ public class CaseOrderItem
     [Required]
     public int CaseOrderId { get; set; }
     public CaseOrder? CaseOrder { get; set; }
-    [Required]
+    [Required] 
     public CompensationType CompensationType { get; set; }
     public List<int> ToothNumbers { get; set; } = new();
 }

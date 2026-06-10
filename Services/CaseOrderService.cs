@@ -91,7 +91,7 @@ namespace DentalLab.Api.Services
 
                 AssignedLabId = labId,
 
-                Status = CaseStatus.Accepted,
+                Status = CaseStatus.Pennding,
 
                 ImpressionStage = dto.ImpressionStage,
 

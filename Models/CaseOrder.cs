@@ -6,6 +6,7 @@ public enum CaseStatus
 {
     Pennding,
     Accepted,
+    RequestInfo,
     InDesign,
     InProduction,
     WaitingForClarification,

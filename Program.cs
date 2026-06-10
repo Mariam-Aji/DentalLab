@@ -78,6 +78,8 @@ builder.Services.AddScoped<IScanVisitService, ScanVisitService>();
 builder.Services.AddScoped<IScanVisitRepository, ScanVisitRepository>();
 builder.Services.AddScoped<ICaseOrderRepository, CaseOrderRepository>();
 builder.Services.AddScoped<ICaseOrderService, CaseOrderService>();
+builder.Services.AddScoped<ILabOrderRepository, LabOrderRepository>();
+builder.Services.AddScoped<ILabOrderService, LabOrderService>();
 builder.Services.AddScoped<IBlogRepository, BlogRepository>();
 builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
