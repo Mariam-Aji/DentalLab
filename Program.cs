@@ -17,6 +17,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
+        // ????? ??? ????? ???? Circular Reference ???? ??????? (ECONNRESET)
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+
+        // ?????? ??? ????????? ??????? ?????? ??
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     })
     .AddNewtonsoftJson(options =>
@@ -26,24 +30,23 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
-
-// ? ?? ??????? 2: ????? ????? CORS ????? ???? ?????? ?? ?? ???? ?? Live Server ????
+// ?? ????? ????? ???????: ????? ???? ???????? ???? ??????? ????
 builder.Services.AddCors(options =>
 {
+    // ????? ??? React ??????? ????? ???? ???? Credentials
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // <--- ???? ???? ?? withCredentials
+    });
+
+    // ??????? ?????? (??? ??? ??????? ????? ???? ?? ?????? ???? Credentials)
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader());
-});
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowReactApp", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173") 
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials(); // ?????? ?????? ??????? ?? ???????? ??? ????? ????????
-    });
 });
 
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
@@ -51,7 +54,8 @@ builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection("OtpSet
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services.Configure<RefreshTokenSettings>(builder.Configuration.GetSection("RefreshTokenSettings"));
 builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
-
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ILabRepository, LabRepository>();
 builder.Services.AddScoped<ILabService, LabService>();
 builder.Services.AddScoped<IConnectionRepository, ConnectionRepository>();
@@ -61,6 +65,7 @@ builder.Services.AddScoped<IConnectionForLabService, ConnectionForLabService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Database=DentalLabDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
+
 
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
@@ -139,9 +144,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
             ClockSkew = TimeSpan.FromMinutes(1)
         };
-    });
 
+        // ?? ??? ?? ????? ?????? ???? ?????? ????? ?????? ?? ??? Query String
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // ??? ??? ????? ?????? ?? SignalR ???????? ????? ?????????
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notifications"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
 var app = builder.Build();
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -149,34 +171,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var adminSeed = scope.ServiceProvider.GetRequiredService<IOptions<AdminSeedSettings>>().Value;
-    if (!string.IsNullOrWhiteSpace(adminSeed.Email) && !string.IsNullOrWhiteSpace(adminSeed.Password))
-    {
-        var exists = db.Users.Any(u => u.Email == adminSeed.Email.Trim());
-        if (!exists)
-        {
-            var admin = new DentalLab.Api.Models.User
-            {
-                Name = string.IsNullOrWhiteSpace(adminSeed.Name) ? "System Admin" : adminSeed.Name.Trim(),
-                Email = adminSeed.Email.Trim(),
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminSeed.Password),
-                Role = DentalLab.Api.Models.UserRole.Admin,
-                Status = DentalLab.Api.Models.AccountStatus.Active,
-                EmailVerifiedAt = DateTime.UtcNow
-            };
-
-            db.Users.Add(admin);
-            db.SaveChanges();
-        }
-    }
-}
-app.UseCors("AllowAll");
-app.UseCors("AllowReactApp");
+// ---- ??????? ?????? ???????? ??? ----
 
 app.UseHttpsRedirection();
+
+// 1. ????? ????? ??? React ????? ???? ?? ??? ????? ???? Authentication
+app.UseCors("AllowReactApp");
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
@@ -184,12 +185,12 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
-app.UseCors("AllowLiveServer");
+// 2. ?????? ?? ?????? ???? ??? ??? CORS ??????
 app.UseAuthentication();
 app.UseAuthorization();
-
+// ????? ?? ????? ?????? ?????? ?? ????? ???????? ????? ????:
 app.MapHub<NotificationHub>("/notificationHub");
+// ???????? ?? ??? ????? ???????
 app.MapControllers();
 
 app.Run();
-//

@@ -391,5 +391,56 @@ public class AdvertisementController : ControllerBase
 
         return Ok(new { message = "تم حذف المستخدم بنجاح." });
     }
+    [Authorize(Roles = "Admin")]
+
+    [HttpGet("user/{userId}/valid-advertisements")]
+    public async Task<IActionResult> GetUserValidAdvertisements([FromRoute] int userId)
+    {
+        try
+        {
+            var (data, error) = await _advService.GetUserActiveAdvertisementsWithCountAsync(userId);
+
+            if (error != null)
+                return BadRequest(new { message = error });
+
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                message = "حدث خطأ داخلي أثناء معالجة طلب إعلانات المستخدم.",
+                error = ex.Message
+            });
+        }
+    }
+    [Authorize(Roles = "Admin")]
+
+    [HttpPost("search")]
+    public async Task<IActionResult> SearchAdvertisements([FromForm] string query)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return BadRequest(new { message = "يرجى إدخال كلمة مفتاحية للبحث." });
+            }
+
+            var (data, error) = await _advService.SearchAdvertisementsServiceAsync(query);
+
+            if (error != null)
+                return BadRequest(new { message = error });
+
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                message = "حدث خطأ داخلي أثناء عملية البحث.",
+                error = ex.Message
+            });
+        }
+    }
 
 }

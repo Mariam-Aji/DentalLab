@@ -3,6 +3,7 @@ using DentalLab.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace DentalLab.Api.Repositories;
@@ -99,5 +100,64 @@ public class BlogRepository : IBlogRepository
             .Where(n => n.RecipientId == recipientId)
             .OrderByDescending(n => n.Id)
             .ToListAsync();
+    }
+    public async Task<List<BlogPost>> SearchBlogPostsAsync(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return new List<BlogPost>();
+
+        var keywords = searchTerm.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                                 .Select(k => k.Trim().ToLower())
+                                 .ToList();
+
+        if (!keywords.Any())
+            return new List<BlogPost>();
+
+        var query = _context.BlogPosts
+            .Include(b => b.Author)
+            .AsNoTracking();
+
+        var parameter = Expression.Parameter(typeof(BlogPost), "b");
+        Expression? finalExpression = null;
+
+        var stringContainsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) })!;
+        var toLowerMethod = typeof(string).GetMethod("ToLower", Type.EmptyTypes)!;
+
+        foreach (var keyword in keywords)
+        {
+            var keywordConstant = Expression.Constant(keyword, typeof(string));
+
+            var titleProp = Expression.Property(parameter, "Title");
+            var titleToLower = Expression.Call(titleProp, toLowerMethod);
+            var titleContains = Expression.Call(titleToLower, stringContainsMethod, keywordConstant);
+
+            var contentProp = Expression.Property(parameter, "Content");
+            var contentToLower = Expression.Call(contentProp, toLowerMethod);
+            var contentContains = Expression.Call(contentToLower, stringContainsMethod, keywordConstant);
+
+            var authorProp = Expression.Property(parameter, "Author");
+            var authorNotNull = Expression.NotEqual(authorProp, Expression.Constant(null, typeof(User)));
+            var authorNameProp = Expression.Property(authorProp, "Name");
+            var authorNameToLower = Expression.Call(authorNameProp, toLowerMethod);
+            var authorNameContains = Expression.Call(authorNameToLower, stringContainsMethod, keywordConstant);
+            var authorCriteriaCombined = Expression.AndAlso(authorNotNull, authorNameContains);
+
+            var currentKeywordExpression = Expression.OrElse(
+                Expression.OrElse(titleContains, contentContains),
+                authorCriteriaCombined
+            );
+
+            finalExpression = finalExpression == null
+                ? currentKeywordExpression
+                : Expression.OrElse(finalExpression, currentKeywordExpression);
+        }
+
+        if (finalExpression != null)
+        {
+            var lambda = Expression.Lambda<Func<BlogPost, bool>>(finalExpression, parameter);
+            query = query.Where(lambda);
+        }
+
+        return await query.ToListAsync();
     }
 }

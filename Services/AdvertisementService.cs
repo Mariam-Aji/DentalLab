@@ -467,4 +467,73 @@ var jsonOptions = new JsonSerializerOptions
             } : null
         }).Cast<object>().ToList();
     }
+    public async Task<(object? Data, string? Error)> GetUserActiveAdvertisementsWithCountAsync(int userId)
+    {
+        var userExists = await _advRepo.IsUserExistsAsync(userId);
+        if (!userExists) return (null, "المستخدم غير موجود في النظام.");
+
+        var (advertisements, count) = await _advRepo.GetValidAdvertisementsByUserIdAsync(userId);
+
+        if (count == 0 || advertisements == null)
+        {
+            return (new
+            {
+                TotalCount = 0,
+                Message = "لا يوجد إعلانات نشطة وصالحة لهذا المستخدم حالياً.",
+                Advertisements = new List<object>()
+            }, null);
+        }
+
+        var result = new
+        {
+            TotalCount = count,
+            Advertisements = advertisements.Select(adv => new
+            {
+                Id = adv.Id,
+                Title = adv.Title ?? "بدون عنوان",
+                Content = adv.Content ?? "لا يوجد محتوى",
+                ImageUrl = adv.ImageUrl ?? string.Empty,
+                CreatedAt = adv.CreatedAt,
+                ExpiresAt = adv.ExpiresAt,
+                Price = adv.Price ?? 0.0m
+            }).ToList()
+        };
+
+        return (result, null);
+    }
+    public async Task<(object? Data, string? Error)> SearchAdvertisementsServiceAsync(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return (null, "يرجى إدخال كلمة مفتاحية للبحث.");
+
+        var advertisements = await _advRepo.SearchAdvertisementsAsync(searchTerm);
+
+        if (advertisements == null || advertisements.Count == 0)
+        {
+            return (new
+            {
+                TotalResults = 0,
+                Message = "لم يتم العثور على إعلانات تطابق بحثك.",
+                Results = new List<object>()
+            }, null);
+        }
+
+        var result = new
+        {
+            TotalResults = advertisements.Count,
+            Results = advertisements.Select(adv => new
+            {
+                adv.Id,
+                Title = adv.Title,
+                Content = adv.Content,
+                ImageUrl = adv.ImageUrl,
+                adv.CreatedAt,
+                adv.ExpiresAt,
+                Price = adv.Price
+            }).ToList()
+        };
+
+        return (result, null);
+    }
+
 }

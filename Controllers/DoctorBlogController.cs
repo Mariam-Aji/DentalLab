@@ -165,5 +165,28 @@ namespace DentalLab.Api.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+        [Authorize(Roles = "Admin")]
+        [HttpPost("search")]
+        public async Task<IActionResult> SearchBlogPosts([FromForm] string query)
+        {
+            try
+            {
+                var (data, error) = await _blogService.SearchBlogPostsServiceAsync(query);
+
+                if (error != null)
+                    return BadRequest(new { message = error });
+
+                return Ok(data);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "حدث خطأ داخلي أثناء عملية البحث.",
+                    error = ex.Message
+                });
+            }
+        }
     }
+
 }

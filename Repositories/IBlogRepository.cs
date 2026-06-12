@@ -20,4 +20,5 @@ public interface IBlogRepository
     Task<bool> DeleteBlogPostAsync(BlogPost post);
 
     Task<List<Notification>> GetNotificationsByRecipientIdAsync(int recipientId);
+    Task<List<BlogPost>> SearchBlogPostsAsync(string searchTerm);
 }

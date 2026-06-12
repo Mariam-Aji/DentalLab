@@ -337,4 +337,46 @@ public class BlogService : IBlogService
     {
         return await _blogRepo.GetNotificationsByRecipientIdAsync(recipientId);
     }
+    public async Task<(object? Data, string? Error)> SearchBlogPostsServiceAsync(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return (null, "يرجى إدخال كلمة مفتاحية للبحث.");
+
+        var posts = await _blogRepo.SearchBlogPostsAsync(searchTerm);
+
+        if (posts == null || posts.Count == 0)
+        {
+            return (new
+            {
+                TotalResults = 0,
+                Message = "لم يتم العثور على أي مقالات تطابق هذا البحث.",
+                CategorizedPosts = new Dictionary<string, object>()
+            }, null);
+        }
+
+        var categorizedData = posts
+            .GroupBy(p => p.Type.ToString())
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(p => new
+                {
+                    p.Id,
+                    Title = p.Title,
+                    Content = p.Content,
+                    AuthorName = p.Author != null ? p.Author.Name : "كاتب مجهول",
+                    AuthorId = p.AuthorId,
+                    Status = p.Status.ToString(),
+                    p.CreatedAt
+                }).ToList()
+            );
+
+        var response = new
+        {
+            TotalResults = posts.Count,
+            SearchQuery = searchTerm,
+            CategorizedPosts = categorizedData
+        };
+
+        return (response, null);
+    }
 }

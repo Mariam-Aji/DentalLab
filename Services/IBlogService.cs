@@ -16,5 +16,6 @@ namespace DentalLab.Api.Services
         Task<(bool success, string? error)> RejectPostAsync(int postId);
         Task<IEnumerable<BlogPostResponseDto>> GetPendingDoctorPostsAsync();
         Task<List<Notification>> GetNotificationsByRecipientIdAsync(int recipientId);
+        Task<(object? Data, string? Error)> SearchBlogPostsServiceAsync(string searchTerm);
     }
 }

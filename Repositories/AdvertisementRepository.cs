@@ -144,4 +144,93 @@ public class AdvertisementRepository : IAdvertisementRepository
                         u.NamePlace.Contains(labName))
             .ToListAsync();
     }
+    public async Task<(List<Advertisement> Advertisements, int Count)> GetValidAdvertisementsByUserIdAsync(int userId)
+    {
+        var today = DateTime.UtcNow;
+
+        var rawData = await _context.Advertisements
+            .AsNoTracking()
+            .Where(a => a.UserId == userId &&
+                        a.IsActive == true &&
+                        (a.ExpiresAt == null || a.ExpiresAt >= today))
+            .Select(a => new
+            {
+                a.Id,
+                Title = a.Title,
+                Content = a.Content,
+                ImageUrl = a.ImageUrl,
+                Target = (int?)a.Target,
+                CreatedAt = (DateTime?)a.CreatedAt,
+                ExpiresAt = (DateTime?)a.ExpiresAt,
+                Price = (decimal?)a.Price,
+                UserId = (int?)a.UserId
+            })
+            .ToListAsync();
+
+        var advertisements = rawData.Select(a => new Advertisement
+        {
+            Id = a.Id,
+            Title = a.Title ?? string.Empty,
+            Content = a.Content ?? string.Empty,
+            ImageUrl = a.ImageUrl ?? string.Empty,
+
+            Target = a.Target.HasValue ? (TargetAudience)a.Target.Value : (TargetAudience)0,
+
+            CreatedAt = a.CreatedAt ?? DateTime.UtcNow,
+            ExpiresAt = a.ExpiresAt,
+            Price = a.Price ?? 0.0m, 
+            UserId = a.UserId ?? userId
+        }).ToList();
+
+        int totalCount = advertisements.Count;
+
+        return (advertisements, totalCount);
+    }
+    public async Task<List<Advertisement>> SearchAdvertisementsAsync(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return new List<Advertisement>();
+
+        var keywords = searchTerm.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                                 .Select(k => k.Trim().ToLower())
+                                 .ToList();
+
+        if (!keywords.Any())
+            return new List<Advertisement>();
+
+        var query = _context.Advertisements.AsNoTracking();
+
+        query = query.Where(a => keywords.Any(k => (a.Title != null && a.Title.ToLower().Contains(k)) ||
+                                                   (a.Content != null && a.Content.ToLower().Contains(k))));
+
+        var rawData = await query.Select(a => new
+        {
+            a.Id,
+            a.Title,
+            a.Content,
+            a.ImageUrl,
+            Target = (int?)a.Target,
+            CreatedAt = (DateTime?)a.CreatedAt,
+            a.ExpiresAt,
+            Price = (decimal?)a.Price,
+            UserId = (int?)a.UserId
+        })
+        .ToListAsync();
+
+        var advertisements = rawData.Select(a => new Advertisement
+        {
+            Id = a.Id,
+            Title = a.Title ?? string.Empty,
+            Content = a.Content ?? string.Empty,
+            ImageUrl = a.ImageUrl ?? string.Empty,
+            Target = a.Target.HasValue ? (TargetAudience)a.Target.Value : (TargetAudience)0,
+            CreatedAt = a.CreatedAt ?? DateTime.UtcNow,
+            ExpiresAt = a.ExpiresAt,
+            Price = a.Price ?? 0.0m,
+            UserId = a.UserId ?? 0
+        }).ToList();
+
+        return advertisements;
+    }
+
 }

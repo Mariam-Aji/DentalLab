@@ -24,4 +24,7 @@ public interface IAdvertisementService
     Task<(User? result, string? error)> UpdateUserAsync(int userId, UpdateUserDto dto);
     Task<(bool success, string? error)> DeleteUserAsync(int userId);
     Task<List<object>> SearchLabsAsync(string name);
+    Task<(object? Data, string? Error)> GetUserActiveAdvertisementsWithCountAsync(int userId);
+    Task<(object? Data, string? Error)> SearchAdvertisementsServiceAsync(string searchTerm);
+
 }
