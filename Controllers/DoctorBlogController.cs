@@ -131,7 +131,8 @@ namespace DentalLab.Api.Controllers
                     return BadRequest(new { message = error });
                 }
 
-                return Ok(new { message = "تم رفض المنشور وحذفه بالكامل مع كافة مرفقاته، وتنبيه الطبيب بنجاح." });
+                // 🎯 تعديل الرسالة لتطابق الواقع الجديد
+                return Ok(new { message = "تم رفض المنشور بنجاح وتحويل حالته إلى (مرفوض)، وتم تنبيه الطبيب." });
             }
             catch (Exception ex)
             {

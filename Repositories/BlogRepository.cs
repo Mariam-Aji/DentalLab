@@ -84,15 +84,10 @@ public class BlogRepository : IBlogRepository
 
     public async Task<bool> DeleteBlogPostAsync(BlogPost post)
     {
-        if (post.Attachments != null && post.Attachments.Any())
-        {
-            _context.FileResources.RemoveRange(post.Attachments);
-        }
-
         _context.BlogPosts.Remove(post);
+
         return await _context.SaveChangesAsync() > 0;
     }
-
     public async Task<List<Notification>> GetNotificationsByRecipientIdAsync(int recipientId)
     {
         return await _context.Notifications

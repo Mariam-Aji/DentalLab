@@ -171,24 +171,21 @@ public class BlogService : IBlogService
 
     public async Task<(bool success, string? error)> RejectPostAsync(int postId)
     {
+        // 1. جلب المنشور مع المرفقات للتأكد من وجوده
         var post = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(postId);
         if (post == null) return (false, "المنشور المحدد غير موجود.");
-
-        if (post.Attachments != null && post.Attachments.Any())
-        {
-            foreach (var attachment in post.Attachments)
-            {
-                var fullPath = Path.Combine(_env.ContentRootPath, attachment.Path.Replace("/", "\\"));
-                if (File.Exists(fullPath))
-                {
-                    File.Delete(fullPath);
-                }
-            }
-        }
 
         int targetDoctorId = post.AuthorId;
         string postTitle = post.Title;
 
+        // 2. تحديث حالة المنشور إلى Rejected (والتي تساوي قيمتها 2 في الـ enum)
+        post.Status = BlogPostStatus.Rejected;
+
+        // 3. حفظ التعديل في قاعدة البيانات عبر الـ Repository الحالية
+        var isUpdated = await _blogRepo.UpdateBlogPostAsync(post);
+        if (!isUpdated) return (false, "حدث خطأ أثناء محاولة تحديث حالة المنشور إلى مرفوض.");
+
+        // 4. تحديث إشعار الأدمن المعلق القديم واعتياره مقروءاً
         var adminId = await _blogRepo.GetAdminIdAsync();
         if (adminId.HasValue)
         {
@@ -200,21 +197,18 @@ public class BlogService : IBlogService
             }
         }
 
-        var deleted = await _blogRepo.DeleteBlogPostAsync(post);
-        if (!deleted) return (false, "حدث خطأ أثناء محاولة حذف المنشور من قاعدة البيانات.");
-
+        // 5. إرسال إشعار للطبيب لإعلامه بالرفض (مع إبقاء الـ BlogPostId مربوطاً ليتمكن من رؤيته وتعديله لاحقاً)
         await _blogRepo.SaveNotificationAsync(new Notification
         {
             RecipientId = targetDoctorId,
-            BlogPostId = null, 
-            Message = $"🛑 نعتذر منك، لقد تم رفض نشر مقالك الطبي المعنون بـ '{postTitle}' لمخالفته شروط المراجعة وتم حذفه.",
+            BlogPostId = post.Id, // 🎯 أصبحت آمنة الآن لأن المنشور لم يُحذف
+            Message = $"🛑 نعتذر منك، لقد تم رفض نشر مقالك الطبي المعنون بـ '{postTitle}' لمخالفته شروط المراجعة، يمكنك تعديله وإعادة إرساله.",
             Type = NotificationType.StatusChanged,
             IsRead = false
         });
 
         return (true, null);
     }
-
     public async Task<List<BlogPostResponseDto>> GetDoctorPostsAsync(int doctorId)
     {
         var posts = await _blogRepo.GetBlogPostsByAuthorIdAsync(doctorId);

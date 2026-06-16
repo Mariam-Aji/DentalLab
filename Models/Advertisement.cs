@@ -22,7 +22,6 @@ public class Advertisement
 
     public string? ImageUrl { get; set; }
 
-    // 🎯 الإضافة هنا: ربط حقل الجمهور المستهدف بالـ Enum مباشرة
     [Required]
     public TargetAudience Target { get; set; }
 
