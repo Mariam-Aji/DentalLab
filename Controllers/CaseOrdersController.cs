@@ -174,6 +174,27 @@ public class CaseOrdersController : ControllerBase
         {
             return StatusCode(500, new { message = "حدث خطأ أثناء جلب قائمة الطلبيات الشاملة.", error = ex.Message });
         }
+
+    }
+    [Authorize(Roles = "Dentist,Admin")]
+    [HttpPut("{caseOrderId}/lab/{labId}/add-items")]
+    [Consumes("multipart/form-data")] 
+    public async Task<IActionResult> AddItemsToOrder(int caseOrderId, int labId, [FromForm] AddCaseOrderItemsDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            (bool success, string? error) = await _service.AddItemsToExistingOrderAsync(caseOrderId, labId, dto);
+            if (!success) return BadRequest(new { message = error });
+
+            return Ok(new { message = "تمت إضافة العناصر بنجاح باستخدام FromForm وتوجيه الإشعار!" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 }
+
     

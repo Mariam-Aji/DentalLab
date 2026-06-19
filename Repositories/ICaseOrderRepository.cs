@@ -19,6 +19,8 @@ public interface ICaseOrderRepository
     Task<Patient?> GetPatientWithFilesByIdAsync(int patientId);
     Task<bool> UpdatePatientAsync(Patient patient);
     Task<List<CaseOrderDetailDto>> GetAllCaseOrdersWithDetailsAsync();
+    Task<bool> AddCaseOrderItemsRangeAsync(List<CaseOrderItem> items);
     //
-
+    // 🎯 التابع الجديد الخاص بحفظ الإشعارات في قاعدة البيانات
+    Task SaveNotificationAsync(Notification notification);
 }

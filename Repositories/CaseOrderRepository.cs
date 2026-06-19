@@ -135,5 +135,16 @@ public class CaseOrderRepository : ICaseOrderRepository
             .ToListAsync();
     }
     //
+    public async Task<bool> AddCaseOrderItemsRangeAsync(List<CaseOrderItem> items)
+    {
+        await _context.CaseOrderItems.AddRangeAsync(items);
+        return await _context.SaveChangesAsync() > 0;
+    }
+    public async Task SaveNotificationAsync(Notification notification)
+    {
+        await _context.Notifications.AddAsync(notification);
+        await _context.SaveChangesAsync();
+    }
+
 }
     

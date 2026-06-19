@@ -1,4 +1,5 @@
-﻿using DentalLab.Api.Dtos;
+﻿
+using DentalLab.Api.Dtos;
 using DentalLab.Api.Models;
 using System.Threading.Tasks;
 
@@ -18,6 +19,8 @@ namespace DentalLab.Api.Services
         Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId);
         Task<(object? result, string? error)> UpdatePatientDetailsAsync(int patientId, UpdatePatientDto dto, int dentistId);
         Task<List<CaseOrderDetailDto>> GetAllOrdersWithDetailsAsync();
+        Task<(bool Success, string? Error)> AddItemsToExistingOrderAsync(int caseOrderId, int labId, AddCaseOrderItemsDto dto);
+
     }
 }
 //

@@ -3,6 +3,7 @@ using DentalLab.Api.Models;
 using DentalLab.Api.Repositories;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,13 +16,22 @@ namespace DentalLab.Api.Services
     {
         private readonly ICaseOrderRepository _repo;
         private readonly IWebHostEnvironment _env;
-
+        private readonly IHubContext<NotificationHub> _hubContext;
         public CaseOrderService(
             ICaseOrderRepository repo,
             IWebHostEnvironment env)
         {
             _repo = repo;
             _env = env;
+        }
+        public CaseOrderService(
+        ICaseOrderRepository repo,
+        IWebHostEnvironment env,
+        IHubContext<NotificationHub> hubContext) // 👈 تأكدي من وجودها هنا
+        {
+            _repo = repo;
+            _env = env;
+            _hubContext = hubContext; // 👈 وتعيينها هنا
         }
 
         public async Task<(OrderResponseDto? result, string? error)>
@@ -406,6 +416,79 @@ namespace DentalLab.Api.Services
         {
             return await _repo.GetAllCaseOrdersWithDetailsAsync();
         }
-        //
+        public async Task<(bool Success, string? Error)> AddItemsToExistingOrderAsync(int caseOrderId, int labId, AddCaseOrderItemsDto dto)
+        {
+            var order = await _repo.GetOrderByIdAsync(caseOrderId);
+            if (order == null) return (false, "طلب التعويض (CaseOrder) غير موجود.");
+
+            if (dto.CompensationTypes == null || !dto.CompensationTypes.Any())
+            {
+                return (false, "لا توجد عناصر جديدة لإضافتها.");
+            }
+
+            try
+            {
+                List<CaseOrderItem> itemsToAdd = new();
+                decimal totalNewItemsPrice = 0;
+
+                for (int i = 0; i < dto.CompensationTypes.Count; i++)
+                {
+                    var compType = (CompensationType)dto.CompensationTypes[i];
+                    var toothNumbers = new List<int>();
+                    if (i < dto.ToothNumbersGrouped.Count && !string.IsNullOrWhiteSpace(dto.ToothNumbersGrouped[i]))
+                    {
+                        toothNumbers = dto.ToothNumbersGrouped[i]
+                            .Split(',')
+                            .Select(int.Parse)
+                            .ToList();
+                    }
+
+                    var newItem = new CaseOrderItem
+                    {
+                        CaseOrderId = caseOrderId,
+                        CompensationType = compType,
+                        ToothNumbers = toothNumbers
+                    };
+                    itemsToAdd.Add(newItem);
+
+                    var labPrice = await _repo.GetUnitPriceAsync(labId, compType);
+                    decimal unitPrice = labPrice?.UnitPrice ?? 0;
+                    totalNewItemsPrice += unitPrice * toothNumbers.Count;
+                }
+
+                var isAdded = await _repo.AddCaseOrderItemsRangeAsync(itemsToAdd);
+                if (!isAdded) return (false, "فشل في حفظ العناصر الجديدة.");
+
+                order.EstimatedPrice = (order.EstimatedPrice ?? 0) + totalNewItemsPrice;
+                order.Status = CaseStatus.WaitingForClarification;
+
+                await _repo.UpdateOrderAsync(order);
+
+                // ================== 💾 حفظ الإشعار في قاعدة البيانات وبثه حياً عبر SignalR ==================
+                string alertText = $"قام الطبيب بتعديل الطلبية رقم ({caseOrderId}) وإضافة عناصر تعويضية جديدة، بانتظار مراجعتكم وتحديد السعر النهائي.";
+
+                var notification = new Notification
+                {
+                    RecipientId = labId,
+                    Message = alertText,
+                    Type = NotificationType.StatusChanged,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                // 1. استدعاء مستودع قاعدة البيانات لتسجيل الإشعار بشكل دائم
+                await _repo.SaveNotificationAsync(notification);
+
+                // 2. البث الفوري للمخبري المقترن بالـ ID عبر اتصال SignalR النشط
+                await _hubContext.Clients.User(labId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
+                // =======================================================================================
+
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"حدث خطأ داخلي أثناء معالجة التعديلات: {ex.Message}");
+            }
+        }
     }
 }
