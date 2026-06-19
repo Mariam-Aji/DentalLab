@@ -17,7 +17,9 @@ public class LabOrderRepository : ILabOrderRepository
             .Include(co => co.Files)
             .Include(co => co.CreatedBy)
             .Where(co => co.AssignedLabId == labId && (co.Status == CaseStatus.Pennding))
-            .OrderByDescending(co => co.CreatedAt)
+            .OrderBy(co => co.DeliveryDate == null)
+            .ThenBy(co => co.DeliveryDate)
+            .ThenBy(co => co.CreatedAt)
             .ToListAsync();
     }
 

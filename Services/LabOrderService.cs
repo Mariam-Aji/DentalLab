@@ -41,7 +41,7 @@ public class LabOrderService : ILabOrderService
             DentistClinicAddress = co.CreatedBy?.AddressPlace,
 
             LabId = co.AssignedLabId,
-           
+
 
             Items = co.Items.Select(item => new OrderDetailsItemDto
             {
