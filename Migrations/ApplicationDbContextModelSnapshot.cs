@@ -141,6 +141,9 @@ namespace DentalLab.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsTemporary")
                         .HasColumnType("bit");
 

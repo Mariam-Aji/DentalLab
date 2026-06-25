@@ -25,6 +25,7 @@ public class LabPendingOrderDto
     public string? Notes { get; set; }
     public decimal? EstimatedPrice { get; set; }
     public decimal? FinalPrice { get; set; }
+    public bool IsPaid { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool HasAccessories { get; set; }
 
