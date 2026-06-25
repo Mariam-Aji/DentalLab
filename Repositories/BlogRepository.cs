@@ -91,7 +91,7 @@ public class BlogRepository : IBlogRepository
     public async Task<List<Notification>> GetNotificationsByRecipientIdAsync(int recipientId)
     {
         return await _context.Notifications
-            .Include(n => n.BlogPost) 
+            .Include(n => n.BlogPost)
             .Where(n => n.RecipientId == recipientId)
             .OrderByDescending(n => n.Id)
             .ToListAsync();

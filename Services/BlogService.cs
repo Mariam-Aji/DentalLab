@@ -72,7 +72,7 @@ public class BlogService : IBlogService
 
         var savedPost = await _blogRepo.SaveBlogPostAsync(blogPost);
 
-       
+
         var completePost = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(savedPost.Id);
 
         var adminId = await _blogRepo.GetAdminIdAsync();
@@ -282,7 +282,7 @@ public class BlogService : IBlogService
             await _blogRepo.SaveNotificationAsync(new Notification
             {
                 RecipientId = adminId.Value,
-                BlogPostId = post.Id, 
+                BlogPostId = post.Id,
                 Message = $"تحديث موافقة: قام الطبيب بتعديل منشوره بعنوان '{post.Title}' وهو بانتظار مراجعتك مجدداً.",
                 Type = NotificationType.StatusChanged,
                 IsRead = false
