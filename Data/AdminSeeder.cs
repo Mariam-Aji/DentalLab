@@ -14,7 +14,7 @@ public static class AdminSeeder
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var settings = scope.ServiceProvider.GetRequiredService<IOptions<AdminSeedSettings>>().Value;
 
-        // تأكد إن الداتابيس migration متطبق
+      
         await db.Database.MigrateAsync();
 
         var email = settings.Email.Trim().ToLower();

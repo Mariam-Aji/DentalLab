@@ -29,29 +29,42 @@ public class ApplicationDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<LabScanSlot> LabScanSlots { get; set; }
     public DbSet<Advertisement> Advertisements { get; set; }
+    public DbSet<OrderInvoice> OrderInvoices { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<OrderInvoice>()
+        .HasOne(i => i.CaseOrder)
+        .WithOne(o => o.Invoice)
+        .HasForeignKey<OrderInvoice>(i => i.CaseOrderId)
+        .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<OrderInvoiceItem>()
+        .HasOne(item => item.OrderInvoice)
+        .WithMany(invoice => invoice.InvoiceItems)
+        .HasForeignKey(item => item.OrderInvoiceId)
+        .OnDelete(DeleteBehavior.Cascade); // ?? Cascade ??? ???? ??????
 
+        // 3. ??? ??? ?????? ??????? (Precision) ???? ????? ??????? ??????????
+        modelBuilder.Entity<OrderInvoice>()
+            .Property(i => i.TotalAmount)
+            .HasPrecision(18, 2); // 18 ??? ???? ????? ??? ???????
+
+        modelBuilder.Entity<OrderInvoiceItem>()
+            .Property(item => item.UnitPrice)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<OrderInvoiceItem>()
+            .Property(item => item.LineTotal)
+            .HasPrecision(18, 2);
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
-        //    modelBuilder.Entity<LabScanSlot>()
-        //.HasOne(x => x.Lab)
-        //.WithMany(l => l.ScanSlots)
-        //.HasForeignKey(x => x.LabId)
-        //.OnDelete(DeleteBehavior.Cascade);
-        //    modelBuilder.Entity<LabScanSlot>()
-        //.HasOne(x => x.Booking)
-        //.WithOne(x => x.Slot)
-        //.HasForeignKey<ScanVisitRequest>(x => x.LabScanSlotId)
-        //.OnDelete(DeleteBehavior.Cascade);
-        //    modelBuilder.Entity<ScanVisitRequest>()
-        //.HasOne(x => x.Lab)
-        //.WithMany(l => l.ScanVisitRequests)
-        //.HasForeignKey(x => x.LabId)
-        //.OnDelete(DeleteBehavior.Restrict);
-        //    modelBuilder.Entity<User>()
-        //        .Property(u => u.Role)
-        //        .HasConversion<string>();
+        modelBuilder.Entity<CaseOrder>()
+         .HasOne(co => co.Invoice)
+         .WithOne(i => i.CaseOrder)
+         .HasForeignKey<OrderInvoice>(i => i.CaseOrderId)
+         .OnDelete(DeleteBehavior.Cascade); 
+        modelBuilder.Entity<OrderInvoice>()
+            .Property(i => i.TotalAmount)
+            .HasPrecision(18, 2);
         modelBuilder.Entity<Advertisement>()
         .Property(a => a.Target)
         .HasConversion<int>();

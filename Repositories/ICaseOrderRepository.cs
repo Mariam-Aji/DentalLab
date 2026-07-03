@@ -7,7 +7,7 @@ public interface ICaseOrderRepository
 {
     Task<CaseOrder> CreateOrderAsync(CaseOrder order);
     Task<CaseOrder?> GetOrderByIdAsync(int orderId);
-    Task UpdateOrderAsync(CaseOrder order);
+    //Task UpdateOrderAsync(CaseOrder order);
     Task AddOrderItemAsync(CaseOrderItem item);
     Task<LabPrice?> GetUnitPriceAsync(int labId, CompensationType type);
     Task<bool> IsDentistConnectedToLab(int dentistId, int labId);
@@ -21,6 +21,17 @@ public interface ICaseOrderRepository
     Task<List<CaseOrderDetailDto>> GetAllCaseOrdersWithDetailsAsync();
     Task<bool> AddCaseOrderItemsRangeAsync(List<CaseOrderItem> items);
     //
-    // 🎯 التابع الجديد الخاص بحفظ الإشعارات في قاعدة البيانات
     Task SaveNotificationAsync(Notification notification);
+    Task<bool> DeleteOrderAsync(CaseOrder order);
+    Task<Lab?> GetLabByIdAsync(int labId);
+    Task<OrderInvoice?> GetInvoiceByOrderIdAsync(int orderId);
+    Task AddInvoiceAsync(OrderInvoice invoice);
+    Task<List<CaseOrder>> GetDentistOrdersWithItemsAsync(int dentistId);
+    Task<List<OrderInvoice>> GetInvoicesByOrderIdsAsync(List<int> orderIds);
+    //Task AddInvoicesRangeAsync(List<OrderInvoice> invoices);
+    Task UpdateInvoiceAsync(OrderInvoice invoice);
+    //Task<OrderInvoice?> GetInvoiceByMyFatoorahIdAsync(int mfInvoiceId);
+    // داخل واجهة المستودع ICaseOrderRepository أو الواجهة الخاصة بالفواتير
+    Task AddInvoicesRangeAsync(List<OrderInvoice> invoices);
+    Task UpdateOrderAsync(CaseOrder order);
 }

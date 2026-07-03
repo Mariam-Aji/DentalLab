@@ -20,7 +20,9 @@ namespace DentalLab.Api.Services
         Task<(object? result, string? error)> UpdatePatientDetailsAsync(int patientId, UpdatePatientDto dto, int dentistId);
         Task<List<CaseOrderDetailDto>> GetAllOrdersWithDetailsAsync();
         Task<(bool Success, string? Error)> AddItemsToExistingOrderAsync(int caseOrderId, int labId, AddCaseOrderItemsDto dto);
-
+        Task<(bool Success, string? Message, decimal RefundAmount)> CancelAndProcessOrderAsync(int caseOrderId, int labId, CancelCaseOrderDto dto);
+        Task<CaseOrderInvoiceDto> GetOrCreateOrderInvoiceAsync(int orderId, int dentistId);
+        Task<List<CaseOrderInvoiceDto>> GetOrCreateDentistInvoicesAsync(int dentistId);
     }
 }
 //

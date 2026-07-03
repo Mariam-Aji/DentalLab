@@ -15,7 +15,6 @@ public enum CaseStatus
     WaitingForClarification,
     Cancelled
 }
-
 public enum ImpressionStage
 {
     PlasticImpression,
@@ -73,4 +72,5 @@ public class CaseOrder
 
     public DateTime CreatedAt { get; set; }
         = DateTime.UtcNow;
+    public OrderInvoice? Invoice { get; set; }
 }

@@ -15,9 +15,6 @@ public class ScanVisitController : ControllerBase
     {
         _service = service;
     }
-
-   
-
     [Authorize(Roles = "Dentist")]
     [HttpPost("book/{labId}/{slotId}")]
     public async Task<IActionResult> Book(int labId, int slotId)
@@ -48,6 +45,19 @@ public class ScanVisitController : ControllerBase
 
         var notifications = await _service.GetLabNotificationsAsync(labOwnerId);
         return Ok(notifications);
+    }
+    [Authorize(Roles = "Dentist")]
+    [HttpGet("available-slots/{labId}")]
+    public async Task<IActionResult> GetAvailableSlots(int labId)
+    {
+        var slots = await _service.GetAvailableSlotsAsync(labId, DateTime.Today);
+
+        if (slots == null || !slots.Any())
+        {
+            return NotFound(new { message = "لا توجد مواعيد فحص متاحة لهذا المخبر حالياً." });
+        }
+
+        return Ok(slots);
     }
     //
 }
