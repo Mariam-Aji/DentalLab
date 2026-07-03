@@ -105,17 +105,13 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IStatisticsRepository, StatisticsRepository>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IAdvertisementRepository, AdvertisementRepository>();
-<<<<<<< HEAD
 
-=======
->>>>>>> e63b3ebb6bad212183115f5abf82458bbe59c80c
 builder.Services.AddScoped<IAdvertisementService, AdvertisementService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IPostService, PostService>();
-<<<<<<< HEAD
+
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<IDentistNotificationService, DentistNotificationService>();
-=======
+
 builder.Services.AddScoped<ILabVerificationRepository, LabVerificationRepository>();
 builder.Services.AddScoped<ILabVerificationService, LabVerificationService>();
 builder.Services.AddScoped<IDentistVerificationRepository, DentistVerificationRepository>();
@@ -124,11 +120,8 @@ builder.Services.AddScoped<ILabSubscriptionRepository, LabSubscriptionRepository
 builder.Services.AddScoped<ILabSubscriptionService, LabSubscriptionService>();
 builder.Services.AddScoped<ILabPaymentRepository, LabPaymentRepository>();
 
-// ??? ???? ????? ????? ??? ??? HttpClient ????? ???
 builder.Services.AddHttpClient<GatewayPaymentService>();
 
-// 6. ????? ??????? Swagger ?? ??? ??? JWT Bearer Authorization
->>>>>>> e63b3ebb6bad212183115f5abf82458bbe59c80c
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });
@@ -186,15 +179,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
 
-<<<<<<< HEAD
                 // يقبل التوكن من Query String لكل مسارات SignalR
                 if (!string.IsNullOrEmpty(accessToken) &&
                     (path.StartsWithSegments("/notificationHub") ||
                      path.StartsWithSegments("/notifications")))
-=======
-                // ?????? ?????? ??????? ?????? ?? ??? ??? ?????? ?????? ??? Hub ???????
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
->>>>>>> e63b3ebb6bad212183115f5abf82458bbe59c80c
+
                 {
                     context.Token = accessToken;
                 }
