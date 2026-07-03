@@ -434,37 +434,65 @@ namespace DentalLab.Api.Services
                 for (int i = 0; i < dto.CompensationTypes.Count; i++)
                 {
                     var compType = (CompensationType)dto.CompensationTypes[i];
-                    var toothNumbers = new List<int>();
+
+                    var newToothNumbers = new List<int>();
                     if (i < dto.ToothNumbersGrouped.Count && !string.IsNullOrWhiteSpace(dto.ToothNumbersGrouped[i]))
                     {
-                        toothNumbers = dto.ToothNumbersGrouped[i]
+                        newToothNumbers = dto.ToothNumbersGrouped[i]
                             .Split(',')
                             .Select(int.Parse)
                             .ToList();
                     }
 
-                    var newItem = new CaseOrderItem
-                    {
-                        CaseOrderId = caseOrderId,
-                        CompensationType = compType,
-                        ToothNumbers = toothNumbers
-                    };
-                    itemsToAdd.Add(newItem);
+                    if (!newToothNumbers.Any()) continue;
 
-                    var labPrice = await _repo.GetUnitPriceAsync(labId, compType);
-                    decimal unitPrice = labPrice?.UnitPrice ?? 0;
-                    totalNewItemsPrice += unitPrice * toothNumbers.Count;
+                    var existingItem = order.Items?.FirstOrDefault(item => item.CompensationType == compType);
+
+                    if (existingItem != null)
+                    {
+                        existingItem.ToothNumbers ??= new List<int>();
+
+                        var trulyNewTeeth = newToothNumbers.Except(existingItem.ToothNumbers).ToList();
+
+                        if (trulyNewTeeth.Any())
+                        {
+                            existingItem.ToothNumbers.AddRange(trulyNewTeeth);
+
+                            var labPrice = await _repo.GetUnitPriceAsync(labId, compType);
+                            decimal unitPrice = labPrice?.UnitPrice ?? 0;
+                            totalNewItemsPrice += unitPrice * trulyNewTeeth.Count;
+                        }
+                    }
+                    else
+                    {
+                        var newItem = new CaseOrderItem
+                        {
+                            CaseOrderId = caseOrderId,
+                            CompensationType = compType,
+                            ToothNumbers = newToothNumbers
+                        };
+                        itemsToAdd.Add(newItem);
+
+                        var labPrice = await _repo.GetUnitPriceAsync(labId, compType);
+                        decimal unitPrice = labPrice?.UnitPrice ?? 0;
+                        totalNewItemsPrice += unitPrice * newToothNumbers.Count;
+                    }
                 }
 
-                var isAdded = await _repo.AddCaseOrderItemsRangeAsync(itemsToAdd);
-                if (!isAdded) return (false, "فشل في حفظ العناصر الجديدة.");
+                if (itemsToAdd.Any())
+                {
+                    order.Items ??= new List<CaseOrderItem>();
+                    foreach (var item in itemsToAdd)
+                    {
+                        order.Items.Add(item);
+                    }
+                }
 
                 order.EstimatedPrice = (order.EstimatedPrice ?? 0) + totalNewItemsPrice;
                 order.Status = CaseStatus.WaitingForClarification;
 
                 await _repo.UpdateOrderAsync(order);
 
-                // ================== 💾 حفظ الإشعار في قاعدة البيانات وبثه حياً عبر SignalR ==================
                 string alertText = $"قام الطبيب بتعديل الطلبية رقم ({caseOrderId}) وإضافة عناصر تعويضية جديدة، بانتظار مراجعتكم وتحديد السعر النهائي.";
 
                 var notification = new Notification
@@ -476,19 +504,271 @@ namespace DentalLab.Api.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // 1. استدعاء مستودع قاعدة البيانات لتسجيل الإشعار بشكل دائم
                 await _repo.SaveNotificationAsync(notification);
 
-                // 2. البث الفوري للمخبري المقترن بالـ ID عبر اتصال SignalR النشط
+                string labGroupId = $"Lab_{labId}";
+
+                await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
+
                 await _hubContext.Clients.User(labId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
-                // =======================================================================================
 
                 return (true, null);
             }
             catch (Exception ex)
             {
-                return (false, $"حدث خطأ داخلي أثناء معالجة التعديلات: {ex.Message}");
+                return (false, $"حدث خطأ داخلي أثناء معالجة التعديلات والإرسال: {ex.Message}");
             }
+        }
+        public async Task<(bool Success, string? Message, decimal RefundAmount)> CancelAndProcessOrderAsync(int caseOrderId, int labId, CancelCaseOrderDto dto)
+{
+    // 1. جلب الطلبية والتأكد من وجودها وتبعيّتها للمخبر المحدد
+    var order = await _repo.GetOrderByIdAsync(caseOrderId);
+    if (order == null) 
+        return (false, "طلب التعويض غير موجود.", 0);
+
+    if (order.AssignedLabId != labId)
+        return (false, "هذه الطلبية لا تنتمي للمخبر المحدّد.", 0);
+
+    try
+    {
+        // 2. حساب الفارق الزمني لمعالجة الشروط المالية للخصم والاسترداد
+        var timeElapsed = DateTime.UtcNow - order.CreatedAt;
+        decimal estimatedPrice = order.EstimatedPrice ?? 0;
+        decimal refundAmount = 0;
+        string financialAlertMessage = "";
+
+        if (timeElapsed.TotalDays <= 1)
+        {
+            // مضى يوم واحد أو أقل -> استعادة المال كاملة
+            refundAmount = estimatedPrice;
+            financialAlertMessage = $"تم إلغاء الطلب في غضون 24 ساعة. تم استرداد المبلغ بالكامل: $.";
+        }
+        else
+        {
+            // مضى أكثر من يوم -> خسارة 50% من القيمة المقدرة للطلب
+            refundAmount = estimatedPrice * 0.5m;
+            financialAlertMessage = $"تنبيه: مضى أكثر من يوم على إنشاء الطلب، تم خصم 50% كغرامة إلغاء.  المسترد: $.";
+        }
+
+        // 3. صياغة نص الإشعار متضمناً رسالة الطبيب لسبب الإلغاء
+        string cleanReason = string.IsNullOrWhiteSpace(dto.CancellationReason) ? "لم يتم ذكر سبب محدد" : dto.CancellationReason;
+        string alertText = $"قام الطبيب بإلغاء الطلبية رقم ({caseOrderId}). سبب الإلغاء: {cleanReason}. {financialAlertMessage}";
+
+        // 4. جلب بيانات المخبر عبر مستودع الـ _repo المتاح في السيرفس حالياً
+        var lab = await _repo.GetLabByIdAsync(labId); 
+        if (lab == null) return (false, "لم يتم العثور على بيانات المخبر.", 0);
+
+        // 5. بناء الإشعار وحفظه في جدول الإشعارات لصاحب المخبر (UserId)
+        var notification = new Notification
+        {
+            RecipientId = lab.UserId, 
+            Message = alertText,
+            Type = NotificationType.Cancellation,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _repo.SaveNotificationAsync(notification);
+
+        // 6. حذف الطلبية نهائياً من قاعدة البيانات
+        var isDeleted = await _repo.DeleteOrderAsync(order);
+        if (!isDeleted) return (false, "فشل في عملية حذف الطلبية من السيرفر.", 0);
+
+        // 📡 7. بث الإشعار اللحظي عبر الـ SignalR للـ Group وللـ User معاً
+        string labGroupId = $"Lab_{labId}";
+        await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
+        await _hubContext.Clients.User(lab.UserId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
+
+        return (true, financialAlertMessage, refundAmount);
+    }
+    catch (Exception ex)
+    {
+        return (false, $"حدث خطأ داخلي أثناء الإلغاء: {ex.Message}", 0);
+    }
+}
+        public async Task<CaseOrderInvoiceDto> GetOrCreateOrderInvoiceAsync(int orderId, int dentistId)
+        {
+            // 1. جلب الطلبية والتأكد من أنها تخص الطبيب صاحب التوكن الحالي
+            var order = await _repo.GetOrderWithItemsAsync(orderId);
+
+            if (order == null)
+                throw new Exception("الطلبية غير موجودة.");
+
+            if (order.CreatedById != dentistId)
+                throw new UnauthorizedAccessException("غير مصرح لك بالوصول إلى هذه الفاتورة.");
+
+            // 2. التحقق مما إذا كانت الفاتورة قد حُفظت مسبقاً في قاعدة البيانات
+            var existingInvoice = await _repo.GetInvoiceByOrderIdAsync(orderId);
+
+            // 3. حساب القيمة الإجمالية والتفصيلية للعناصر
+            decimal total = 0;
+            var itemsDtoList = new List<CaseOrderInvoiceItemDto>();
+
+            foreach (var item in order.Items)
+            {
+                var price = await _repo.GetLabPriceAsync(order.AssignedLabId!.Value, item.CompensationType);
+                decimal unitPrice = price?.UnitPrice ?? 0;
+                int teethCount = item.ToothNumbers?.Count ?? 0;
+                decimal lineTotal = unitPrice * teethCount;
+
+                total += lineTotal;
+
+                itemsDtoList.Add(new CaseOrderInvoiceItemDto
+                {
+                    CaseOrderItemId = item.Id,
+                    CaseOrderId = order.Id,
+                    CompensationType = item.CompensationType,
+                    ToothNumbers = item.ToothNumbers,
+                    UnitPrice = unitPrice,
+                    LineTotal = lineTotal
+                });
+            }
+
+            // 4. إذا لم تكن الفاتورة محفوظة بالداتا بيز، نقوم بإنشائها وحفظها الآن
+            if (existingInvoice == null)
+            {
+                var newInvoice = new OrderInvoice
+                {
+                    CaseOrderId = order.Id,
+                    TotalAmount = total,
+                    CreatedAt = DateTime.UtcNow,
+                };
+
+                await _repo.AddInvoiceAsync(newInvoice);
+            }
+           
+
+            // 5. بناء الـ DTO النهائي لإرجاعه للـ Controller
+            var invoiceDto = new CaseOrderInvoiceDto
+            {
+                CaseOrderId = order.Id,
+                Status = order.Status.ToString(),
+                EstimatedTotal = total,
+                Message = "هذه فاتورة تقديرية للسعر النهائي، وقد يحدث اختلاف بسيط عند اعتماد المخبر.",
+                Items = itemsDtoList
+            };
+
+            // تحديث السعر التقديري على الطلب نفسه كما في منطقك السابق
+            order.EstimatedPrice = total;
+            await _repo.UpdateOrderAsync(order);
+
+            return invoiceDto;
+        }
+        public async Task<List<CaseOrderInvoiceDto>> GetOrCreateDentistInvoicesAsync(int dentistId)
+        {
+            var dentistOrders = await _repo.GetDentistOrdersWithItemsAsync(dentistId);
+            if (!dentistOrders.Any())
+            {
+                return new List<CaseOrderInvoiceDto>();
+            }
+
+            var orderIds = dentistOrders.Select(o => o.Id).ToList();
+
+            var existingInvoices = await _repo.GetInvoicesByOrderIdsAsync(orderIds);
+
+            var existingInvoicesMap = existingInvoices
+                .Where(i => i.CaseOrderId.HasValue)
+                .ToDictionary(i => i.CaseOrderId!.Value);
+
+            List<OrderInvoice> newInvoicesToSave = new();
+            List<CaseOrderInvoiceDto> finalInvoicesResult = new();
+
+            foreach (var order in dentistOrders)
+            {
+                decimal totalOrderPrice = 0;
+                var itemsDtoList = new List<CaseOrderInvoiceItemDto>();
+                var invoiceItemsToSave = new List<OrderInvoiceItem>();
+
+                // حالة 1: الفاتورة موجودة مسبقاً في النظام
+                if (existingInvoicesMap.TryGetValue(order.Id, out var savedInvoice))
+                {
+                    foreach (var savedItem in savedInvoice.InvoiceItems)
+                    {
+                        itemsDtoList.Add(new CaseOrderInvoiceItemDto
+                        {
+                            CaseOrderItemId = savedItem.Id,
+                            CaseOrderId = order.Id,
+                            // 🌟 الحل هنا: تحويل الـ string المخزن في الفاتورة إلى الـ Enum المطلوب في الـ DTO
+                            CompensationType = Enum.Parse<DentalLab.Api.Models.CompensationType>(savedItem.CompensationType),
+                            ToothNumbers = string.IsNullOrEmpty(savedItem.ToothNumbers)
+                                ? new List<int>()
+                                : savedItem.ToothNumbers.Split(',').Select(int.Parse).ToList(),
+                            UnitPrice = savedItem.UnitPrice,
+                            LineTotal = savedItem.LineTotal
+                        });
+                    }
+
+                    finalInvoicesResult.Add(new CaseOrderInvoiceDto
+                    {
+                        CaseOrderId = order.Id,
+                        Status = order.Status.ToString(),
+                        EstimatedTotal = savedInvoice.TotalAmount,
+                        Message = "هذه فاتورة معتمدة ومخزنة مسبقاً في النظام.",
+                        Items = itemsDtoList
+                    });
+
+                    continue;
+                }
+
+                // حالة 2: حساب الفاتورة لأول مرة وحفظ تفاصيلها الثابتة
+                foreach (var item in order.Items)
+                {
+                    var price = await _repo.GetLabPriceAsync(order.AssignedLabId!.Value, item.CompensationType);
+                    decimal unitPrice = price?.UnitPrice ?? 0;
+                    int teethCount = item.ToothNumbers?.Count ?? 0;
+                    decimal lineTotal = unitPrice * teethCount;
+
+                    totalOrderPrice += lineTotal;
+
+                    itemsDtoList.Add(new CaseOrderInvoiceItemDto
+                    {
+                        CaseOrderId = order.Id,
+                        // 🌟 الحل هنا: تمرير الـ Enum مباشرة للـ DTO دون عمل ToString()
+                        CompensationType = item.CompensationType,
+                        ToothNumbers = item.ToothNumbers ?? new List<int>(),
+                        UnitPrice = unitPrice,
+                        LineTotal = lineTotal
+                    });
+
+                    invoiceItemsToSave.Add(new OrderInvoiceItem
+                    {
+                        // هنا الـ Model يتوقع string، والـ ToString هنا صحيحة تماماً للتخزين الثابت
+                        CompensationType = item.CompensationType.ToString(),
+                        ToothNumbers = string.Join(",", item.ToothNumbers ?? new List<int>()),
+                        UnitPrice = unitPrice,
+                        TeethCount = teethCount,
+                        LineTotal = lineTotal
+                    });
+                }
+
+                var newInvoice = new OrderInvoice
+                {
+                    CaseOrderId = order.Id,
+                    TotalAmount = totalOrderPrice,
+                    CreatedAt = DateTime.UtcNow,
+                    InvoiceItems = invoiceItemsToSave
+                };
+
+                newInvoicesToSave.Add(newInvoice);
+
+                order.EstimatedPrice = totalOrderPrice;
+                await _repo.UpdateOrderAsync(order);
+
+                finalInvoicesResult.Add(new CaseOrderInvoiceDto
+                {
+                    CaseOrderId = order.Id,
+                    Status = order.Status.ToString(),
+                    EstimatedTotal = totalOrderPrice,
+                    Message = "هذه فاتورة تقديرية للسعر النهائي، وقد يحدث اختلاف بسيط عند اعتماد المخبر.",
+                    Items = itemsDtoList
+                });
+            }
+
+            if (newInvoicesToSave.Any())
+            {
+                await _repo.AddInvoicesRangeAsync(newInvoicesToSave);
+            }
+
+            return finalInvoicesResult;
         }
     }
 }

@@ -145,6 +145,75 @@ public class CaseOrderRepository : ICaseOrderRepository
         await _context.Notifications.AddAsync(notification);
         await _context.SaveChangesAsync();
     }
+   
+    public async Task<Lab?> GetLabByIdAsync(int labId)
+    {
+        return await _context.Labs
+            .FirstOrDefaultAsync(l => l.Id == labId);
+    }
+    public async Task<bool> DeleteOrderAsync(CaseOrder order)
+    {
+        var orderWithDetails = await _context.CaseOrders
+            .Include(o => o.Items)
+            .Include(o => o.Files)
+            .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+        if (orderWithDetails == null) return false;
+
+        if (orderWithDetails.Items != null && orderWithDetails.Items.Any())
+        {
+            _context.CaseOrderItems.RemoveRange(orderWithDetails.Items);
+        }
+
+        if (orderWithDetails.Files != null && orderWithDetails.Files.Any())
+        {
+            _context.FileResources.RemoveRange(orderWithDetails.Files);
+        }
+
+        // حذف الطلبية الأساسية
+        _context.CaseOrders.Remove(orderWithDetails);
+
+        // حفظ التغييرات نهائياً في قاعدة البيانات
+        return await _context.SaveChangesAsync() > 0;
+    }
+    public async Task<OrderInvoice?> GetInvoiceByOrderIdAsync(int orderId)
+    {
+        return await _context.OrderInvoices
+            .FirstOrDefaultAsync(i => i.CaseOrderId == orderId);
+    }
+
+    public async Task AddInvoiceAsync(OrderInvoice invoice)
+    {
+        await _context.OrderInvoices.AddAsync(invoice);
+        await _context.SaveChangesAsync();
+    }
+    public async Task<List<CaseOrder>> GetDentistOrdersWithItemsAsync(int dentistId)
+    {
+        return await _context.CaseOrders
+            .Include(o => o.Items)
+            .Where(o => o.CreatedById == dentistId)
+            .ToListAsync();
+    }
+
+    public async Task<List<OrderInvoice>> GetInvoicesByOrderIdsAsync(List<int> orderIds)
+    {
+        return await _context.OrderInvoices
+            .Include(i => i.InvoiceItems) // 🌟 هذا السطر هو المسؤول عن ملء الـ items من الداتا بيز
+            .Where(i => i.CaseOrderId.HasValue && orderIds.Contains(i.CaseOrderId.Value))
+            .ToListAsync();
+    }
+
+    // أضيفي هذه الميثودز في نهاية كلاس CaseOrderRepository
+    public async Task UpdateInvoiceAsync(OrderInvoice invoice)
+    {
+        _context.OrderInvoices.Update(invoice);
+        await _context.SaveChangesAsync();
+    }
+    public async Task AddInvoicesRangeAsync(List<OrderInvoice> invoices)
+    {
+        await _context.OrderInvoices.AddRangeAsync(invoices);
+        await _context.SaveChangesAsync();
+    }
 
 }
     

@@ -64,13 +64,24 @@ public class CaseOrdersController : ControllerBase
         }
     }
 
-    [HttpGet("{orderId}/invoice")]
-    public async Task<IActionResult> GetInvoice(int orderId)
+    [Authorize(Roles = "Dentist")]
+    [HttpGet("my-invoices")]
+    public async Task<IActionResult> GetDentistInvoices()
     {
         try
         {
-            var result = await _service.GetOrderInvoiceAsync(orderId);
-            return Ok(result);
+            // استخراج معرف الطبيب من التوكن
+            var dentistIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(dentistIdClaim))
+            {
+                return Unauthorized(new { message = "لم يتم العثور على صلاحيات الطبيب في التوكن." });
+            }
+
+            int dentistId = int.Parse(dentistIdClaim);
+
+            // استدعاء السيرفس لجلب ومعالجة كافة فواتير هذا الطبيب
+            var invoices = await _service.GetOrCreateDentistInvoicesAsync(dentistId);
+            return Ok(invoices);
         }
         catch (Exception ex)
         {
@@ -176,7 +187,7 @@ public class CaseOrdersController : ControllerBase
         }
 
     }
-    [Authorize(Roles = "Dentist,Admin")]
+    [Authorize(Roles = "Dentist")]
     [HttpPut("{caseOrderId}/lab/{labId}/add-items")]
     [Consumes("multipart/form-data")] 
     public async Task<IActionResult> AddItemsToOrder(int caseOrderId, int labId, [FromForm] AddCaseOrderItemsDto dto)
@@ -189,6 +200,29 @@ public class CaseOrdersController : ControllerBase
             if (!success) return BadRequest(new { message = error });
 
             return Ok(new { message = "تمت إضافة العناصر بنجاح باستخدام FromForm وتوجيه الإشعار!" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+    [Authorize(Roles = "Dentist")]
+    [HttpDelete("{caseOrderId}/lab/{labId}/cancel")]
+    public async Task<IActionResult> CancelOrder(int caseOrderId, int labId, [FromForm] CancelCaseOrderDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            var (success, message, refundAmount) = await _service.CancelAndProcessOrderAsync(caseOrderId, labId, dto);
+            if (!success) return BadRequest(new { message });
+
+            return Ok(new
+            {
+                message = "تم إلغاء الطلبية بنجاح وحذفها وتوجيه الإشعار للمخبر.",
+                details = message,
+                refundAmount = refundAmount
+            });
         }
         catch (Exception ex)
         {
