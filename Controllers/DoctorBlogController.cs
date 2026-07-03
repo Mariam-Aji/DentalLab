@@ -2,6 +2,7 @@
 using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -13,10 +14,17 @@ namespace DentalLab.Api.Controllers
     public class DoctorBlogController : ControllerBase
     {
         private readonly IBlogService _blogService;
+        private readonly INotificationService _notificationService;
+        private readonly DentalLab.Api.Data.ApplicationDbContext _db;
 
-        public DoctorBlogController(IBlogService blogService)
+        public DoctorBlogController(
+            IBlogService blogService,
+            INotificationService notificationService,
+            DentalLab.Api.Data.ApplicationDbContext db)
         {
-            _blogService = blogService;
+            _blogService         = blogService;
+            _notificationService = notificationService;
+            _db                  = db;
         }
 
         [HttpPost("create")]

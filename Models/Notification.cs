@@ -3,7 +3,21 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DentalLab.Api.Models;
 
-public enum NotificationType { OrderAccepted, OrderRejected, InfoRequested, StatusChanged, PriceSet, DeliveryDue, OrderCompleted, Cancellation, ScanVisitConfirmed }
+public enum NotificationType
+{
+    OrderAccepted,
+    OrderRejected,
+    InfoRequested,
+    StatusChanged,
+    PriceSet,
+    DeliveryDue,
+    OrderCompleted,
+    Cancellation,
+    ScanVisitConfirmed,
+    ConnectionAccepted,
+    ConnectionRejected,
+    Disconnected,
+}
 
 public class Notification
 {
@@ -14,6 +28,12 @@ public class Notification
     public NotificationType Type { get; set; }
     public bool IsRead { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>معرف الطلبية المرتبطة بالإشعار (اختياري)</summary>
+    public int? OrderId { get; set; }
+
+    /// <summary>معرف المخبر المرتبط بالإشعار (اختياري)</summary>
+    public int? LabId { get; set; }
 
     // Navigation
     public User Recipient { get; set; } = null!;

@@ -211,6 +211,8 @@ namespace DentalLab.Api.Migrations
                     Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsRead = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    OrderId = table.Column<int>(type: "int", nullable: true),
+                    LabId = table.Column<int>(type: "int", nullable: true),
                     BlogPostId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>

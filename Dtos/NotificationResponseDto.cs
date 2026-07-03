@@ -10,5 +10,5 @@ public class NotificationResponseDto
     //public string Type { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
     public int? BlogPostId { get; set; }
-    public string? BlogPostType { get; set; } 
+    public string? BlogPostType { get; set; }
 }

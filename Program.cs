@@ -95,15 +95,19 @@ builder.Services.AddScoped<ILabConnectedDoctorsRepository, LabConnectedDoctorsRe
 builder.Services.AddScoped<ILabConnectedDoctorsService, LabConnectedDoctorsService>();
 builder.Services.AddScoped<IBlogRepository, BlogRepository>();
 builder.Services.AddScoped<IBlogService, BlogService>();
+builder.Services.AddScoped<ILabBlogRepository, LabBlogRepository>();
+builder.Services.AddScoped<ILabBlogService, LabBlogService>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IStatisticsRepository, StatisticsRepository>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 
 builder.Services.AddScoped<IAdvertisementRepository, AdvertisementRepository>();
 
-
 builder.Services.AddScoped<IAdvertisementService, AdvertisementService>();
+builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IDentistNotificationService, DentistNotificationService>();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });
@@ -159,10 +163,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
-
-                // ??? ??? ????? ?????? ?? SignalR ???????? ????? ?????????
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notifications"))
+
+                // يقبل التوكن من Query String لكل مسارات SignalR
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    (path.StartsWithSegments("/notificationHub") ||
+                     path.StartsWithSegments("/notifications")))
                 {
                     context.Token = accessToken;
                 }

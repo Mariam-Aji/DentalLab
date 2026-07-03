@@ -7,10 +7,14 @@ namespace DentalLab.Api.Services;
 public class LabOrderStatusService : ILabOrderStatusService
 {
     private readonly ILabOrderStatusRepository _repo;
+    private readonly INotificationService      _notifications;
 
-    public LabOrderStatusService(ILabOrderStatusRepository repo)
+    public LabOrderStatusService(
+        ILabOrderStatusRepository repo,
+        INotificationService notifications)
     {
-        _repo = repo;
+        _repo          = repo;
+        _notifications = notifications;
     }
 
     // ----------------------------------------------------------------
@@ -19,13 +23,8 @@ public class LabOrderStatusService : ILabOrderStatusService
     public async Task<List<OrderStatusCountDto>> GetOrdersCountByStatusAsync(int labId)
     {
         var counts = await _repo.GetOrdersCountByStatusAsync(labId);
-
         return counts
-            .Select(x => new OrderStatusCountDto
-            {
-                Status = x.Status.ToString(),
-                Count  = x.Count
-            })
+            .Select(x => new OrderStatusCountDto { Status = x.Status.ToString(), Count = x.Count })
             .OrderBy(x => x.Status)
             .ToList();
     }
@@ -37,8 +36,7 @@ public class LabOrderStatusService : ILabOrderStatusService
         int labId, CaseStatus status)
     {
         var orders = await _repo.GetOrdersByStatusAsync(labId, status);
-        var result = orders.Select(MapToDto).ToList();
-        return (result, null);
+        return (orders.Select(MapToDto).ToList(), null);
     }
 
     // ----------------------------------------------------------------
@@ -55,62 +53,73 @@ public class LabOrderStatusService : ILabOrderStatusService
     }
 
     // ----------------------------------------------------------------
-    // تحديث الحالة + رفع صورة النتيجة
+    // تحديث الحالة + رفع صورة النتيجة + إشعار الطبيب بالحالة الجديدة
     // ----------------------------------------------------------------
     public async Task<(object? result, string? error)> UpdateOrderStatusAsync(
         int orderId, int labId, UpdateOrderStatusDto dto, string uploadsRootPath)
     {
         var order = await _repo.GetOrderByIdAsync(orderId);
-        if (order == null)             return (null, "الطلبية غير موجودة.");
+        if (order == null)              return (null, "الطلبية غير موجودة.");
         if (order.AssignedLabId != labId) return (null, "ليس لديك صلاحية على هذه الطلبية.");
 
-        // تحديث الحالة
+        var oldStatus = order.Status;
         order.Status = dto.Status;
 
-        // إضافة الملاحظات إن وُجدت
         if (!string.IsNullOrWhiteSpace(dto.Notes))
-        {
             order.Notes = string.IsNullOrWhiteSpace(order.Notes)
                 ? dto.Notes
                 : order.Notes + "\n" + dto.Notes;
-        }
 
-        // رفع صورة النتيجة إن وُجدت
-        string? uploadedImagePath = null;
-
+        // رفع صورة النتيجة
         if (dto.ResultImage != null && dto.ResultImage.Length > 0)
         {
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             var ext = Path.GetExtension(dto.ResultImage.FileName).ToLower();
-
             if (!allowedExtensions.Contains(ext))
                 return (null, "صيغة الصورة غير مدعومة. المسموح: jpg, jpeg, png, webp.");
 
-            var uploadPath = Path.Combine(
-                uploadsRootPath, "uploads", "cases", orderId.ToString(), "results");
-
+            var uploadPath = Path.Combine(uploadsRootPath, "uploads", "cases", orderId.ToString(), "results");
             Directory.CreateDirectory(uploadPath);
 
-            var fileName      = $"{Guid.NewGuid():N}{ext}";
-            var fullFilePath  = Path.Combine(uploadPath, fileName);
+            var fileName     = $"{Guid.NewGuid():N}{ext}";
+            var fullFilePath = Path.Combine(uploadPath, fileName);
 
             await using (var stream = new FileStream(fullFilePath, FileMode.Create))
-            {
                 await dto.ResultImage.CopyToAsync(stream);
-            }
 
-            uploadedImagePath = $"uploads/cases/{orderId}/results/{fileName}";
-
-            // إضافة مسار الصورة إلى RequiredImages فقط
             order.RequiredImages ??= new List<string>();
-            order.RequiredImages.Add(uploadedImagePath);
+            order.RequiredImages.Add($"uploads/cases/{orderId}/results/{fileName}");
         }
 
         await _repo.SaveOrderAsync(order);
 
-        // إعادة تحميل الطلبية من DB لضمان أن قائمة Files محدّثة تشمل الصورة المرفوعة للتو
-        var updated = await _repo.GetOrderByIdAsync(orderId);
+        // ترجمة الحالة للعربية للإشعار
+        var statusAr = dto.Status switch
+        {
+            CaseStatus.Accepted                => "مقبول",
+            CaseStatus.InDesign                => "قيد التصميم",
+            CaseStatus.InProduction            => "قيد الإنتاج",
+            CaseStatus.InColoring              => "قيد التلوين",
+            CaseStatus.Ready                   => "جاهز للاستلام",
+            CaseStatus.Delivered               => "تم التسليم",
+            CaseStatus.WaitingForClarification => "بانتظار التوضيح",
+            CaseStatus.Cancelled               => "ملغى",
+            _                                  => dto.Status.ToString()
+        };
 
+        // إشعار الطبيب بتحديث الحالة + الملاحظة إن وُجدت
+        var notifMsg = $"تم تحديث حالة طلبيتك رقم ({orderId}) إلى: {statusAr}.";
+        if (!string.IsNullOrWhiteSpace(dto.Notes))
+            notifMsg += $" ملاحظة المخبر: {dto.Notes}";
+
+        await _notifications.SendAsync(
+            recipientUserId: order.CreatedById,
+            message: notifMsg,
+            type: NotificationType.StatusChanged,
+            orderId: orderId,
+            labId: labId);
+
+        var updated = await _repo.GetOrderByIdAsync(orderId);
         return (MapToDto(updated!), null);
     }
 
@@ -119,39 +128,34 @@ public class LabOrderStatusService : ILabOrderStatusService
     // ----------------------------------------------------------------
     private static LabPendingOrderDto MapToDto(CaseOrder co) => new()
     {
-        OrderId       = co.Id,
-        Title         = co.Title,
-        Status        = co.Status.ToString(),
-        ImpressionStage = co.ImpressionStage.ToString(),
-        ImpressionType  = co.ImpressionType.ToString(),
-        Shade         = co.Shade,
-        IsTemporary   = co.IsTemporary,
-        IsUrgent      = co.IsUrgent,
-        DeliveryDate  = co.DeliveryDate,
-        Notes         = co.Notes,
-        EstimatedPrice = co.EstimatedPrice,
-        FinalPrice    = co.FinalPrice,
-        IsPaid        = co.IsPaid,
-        CreatedAt     = co.CreatedAt,
-        HasAccessories = co.HasAccessories,
-
+        OrderId              = co.Id,
+        Title                = co.Title,
+        Status               = co.Status.ToString(),
+        ImpressionStage      = co.ImpressionStage.ToString(),
+        ImpressionType       = co.ImpressionType.ToString(),
+        Shade                = co.Shade,
+        IsTemporary          = co.IsTemporary,
+        IsUrgent             = co.IsUrgent,
+        DeliveryDate         = co.DeliveryDate,
+        Notes                = co.Notes,
+        EstimatedPrice       = co.EstimatedPrice,
+        FinalPrice           = co.FinalPrice,
+        IsPaid               = co.IsPaid,
+        CreatedAt            = co.CreatedAt,
+        HasAccessories       = co.HasAccessories,
         DentistId            = co.CreatedById,
         DentistName          = co.CreatedBy?.Name ?? "",
         DentistEmail         = co.CreatedBy?.Email ?? "",
         DentistPhone         = co.CreatedBy?.Phone,
         DentistClinicAddress = co.CreatedBy?.AddressPlace,
-
-        LabId = co.AssignedLabId,
-
-        Items = co.Items.Select(item => new OrderDetailsItemDto
+        LabId                = co.AssignedLabId,
+        Items = co.Items.Select(i => new OrderDetailsItemDto
         {
-            ItemId           = item.Id,
-            CompensationType = item.CompensationType.ToString(),
-            ToothNumbers     = item.ToothNumbers
+            ItemId           = i.Id,
+            CompensationType = i.CompensationType.ToString(),
+            ToothNumbers     = i.ToothNumbers
         }).ToList(),
-
         RequiredImages = co.RequiredImages ?? new List<string>(),
-
         Files = co.Files.Select(f => new FileDto
         {
             Id         = f.Id,
