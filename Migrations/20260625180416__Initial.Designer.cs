@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalLab.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260617040809_initial")]
-    partial class initial
+    [Migration("20260625180416__Initial")]
+    partial class _Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -143,6 +143,9 @@ namespace DentalLab.Api.Migrations
                     b.Property<string>("ImpressionType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsTemporary")
                         .HasColumnType("bit");

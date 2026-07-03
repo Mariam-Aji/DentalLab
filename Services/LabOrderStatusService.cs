@@ -131,6 +131,7 @@ public class LabOrderStatusService : ILabOrderStatusService
         Notes         = co.Notes,
         EstimatedPrice = co.EstimatedPrice,
         FinalPrice    = co.FinalPrice,
+        IsPaid        = co.IsPaid,
         CreatedAt     = co.CreatedAt,
         HasAccessories = co.HasAccessories,
 

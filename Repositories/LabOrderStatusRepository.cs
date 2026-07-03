@@ -32,9 +32,9 @@ public class LabOrderStatusRepository : ILabOrderStatusRepository
             .Include(co => co.CreatedBy)
             .Include(co => co.Patient)
             .Where(co => co.AssignedLabId == labId && co.Status == status)
-            .OrderBy(co => co.DeliveryDate == null)   // اللي عندهم تاريخ تسليم أولاً
-            .ThenBy(co => co.DeliveryDate)             // الأقرب تسليماً في المقدمة
-            .ThenBy(co => co.CreatedAt)                // عند التساوي: الأقدم إنشاءً أولاً
+            .OrderBy(co => co.DeliveryDate == null)
+            .ThenBy(co => co.DeliveryDate)
+            .ThenBy(co => co.CreatedAt)
             .ToListAsync();
     }
 

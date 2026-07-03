@@ -31,6 +31,7 @@ public class LabOrderService : ILabOrderService
             Notes = co.Notes,
             EstimatedPrice = co.EstimatedPrice,
             FinalPrice = co.FinalPrice,
+            IsPaid = co.IsPaid,
             CreatedAt = co.CreatedAt,
             HasAccessories = co.HasAccessories,
 
@@ -41,7 +42,6 @@ public class LabOrderService : ILabOrderService
             DentistClinicAddress = co.CreatedBy?.AddressPlace,
 
             LabId = co.AssignedLabId,
-
 
             Items = co.Items.Select(item => new OrderDetailsItemDto
             {

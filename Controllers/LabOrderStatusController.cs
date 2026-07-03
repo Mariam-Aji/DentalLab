@@ -44,10 +44,6 @@ public class LabOrderStatusController : ControllerBase
     // ================================================================
     // GET api/lab-order-status/by-status/{status}
     // عرض الطلبيات بالتفصيل حسب الحالة
-    // مثال: GET api/lab-order-status/by-status/InDesign
-    // الحالات المتاحة: Pennding, Accepted, RequestInfo, InDesign,
-    //                  InProduction, WaitingForClarification,
-    //                  Ready, Delivered, Cancelled
     // ================================================================
     [HttpGet("by-status/{status}")]
     public async Task<IActionResult> GetOrdersByStatus(string status)

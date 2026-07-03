@@ -67,6 +67,8 @@ public class CaseOrder
 
     public decimal? FinalPrice { get; set; }
 
+    public bool IsPaid { get; set; } = false;
+
     public DateTime CreatedAt { get; set; }
         = DateTime.UtcNow;
     public OrderInvoice? Invoice { get; set; }
