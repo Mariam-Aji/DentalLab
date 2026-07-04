@@ -9,9 +9,10 @@ public enum CaseStatus
     RequestInfo,
     InDesign,
     InProduction,
-    WaitingForClarification,
+    InColoring,
     Ready,
     Delivered,
+    WaitingForClarification,
     Cancelled
 }
 public enum ImpressionStage

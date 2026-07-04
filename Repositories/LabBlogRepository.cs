@@ -1,0 +1,166 @@
+using DentalLab.Api.Data;
+using DentalLab.Api.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
+
+namespace DentalLab.Api.Repositories;
+
+public class LabBlogRepository : ILabBlogRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public LabBlogRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<BlogPost> SaveBlogPostAsync(BlogPost post)
+    {
+        await _context.BlogPosts.AddAsync(post);
+        await _context.SaveChangesAsync();
+        return post;
+    }
+
+    public async Task<BlogPost?> GetBlogPostWithAttachmentsByIdAsync(int postId)
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .FirstOrDefaultAsync(b => b.Id == postId);
+    }
+
+    public async Task<bool> UpdateBlogPostAsync(BlogPost post)
+    {
+        _context.BlogPosts.Update(post);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<bool> DeleteBlogPostAsync(BlogPost post)
+    {
+        var linkedNotifications = await _context.Notifications
+            .Where(n => n.BlogPostId == post.Id)
+            .ToListAsync();
+
+        foreach (var notification in linkedNotifications)
+        {
+            notification.BlogPostId = null;
+        }
+
+        _context.BlogPosts.Remove(post);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<int?> GetAdminIdAsync()
+    {
+        var admin = await _context.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Admin);
+        return admin?.Id;
+    }
+
+    public async Task SaveNotificationAsync(Notification notification)
+    {
+        await _context.Notifications.AddAsync(notification);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> UpdateNotificationAsync(Notification notification)
+    {
+        _context.Notifications.Update(notification);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<Notification?> GetNotificationByPostTitleAsync(int adminId, string postTitle)
+    {
+        return await _context.Notifications
+            .FirstOrDefaultAsync(n => n.RecipientId == adminId && n.Message.Contains($"'{postTitle}'"));
+    }
+
+    public async Task<List<BlogPost>> GetBlogPostsByAuthorIdAndStatusAsync(int authorId, BlogPostType type, BlogPostStatus? status)
+    {
+        var query = _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.AuthorId == authorId && b.Type == type);
+
+        if (status.HasValue)
+        {
+            query = query.Where(b => b.Status == status.Value);
+        }
+
+        return await query.OrderByDescending(b => b.CreatedAt).ToListAsync();
+    }
+
+    public async Task<List<BlogPost>> GetBlogPostsByTypeAndStatusAsync(BlogPostType type, BlogPostStatus? status)
+    {
+        var query = _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Type == type);
+
+        if (status.HasValue)
+        {
+            query = query.Where(b => b.Status == status.Value);
+        }
+
+        return await query.OrderByDescending(b => b.CreatedAt).ToListAsync();
+    }
+
+    public async Task<List<BlogPost>> SearchBlogPostsAsync(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return new List<BlogPost>();
+
+        var keywords = searchTerm.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                                 .Select(k => k.Trim().ToLower())
+                                 .ToList();
+
+        if (!keywords.Any())
+            return new List<BlogPost>();
+
+        var query = _context.BlogPosts
+            .Include(b => b.Author)
+            .AsNoTracking();
+
+        var parameter = Expression.Parameter(typeof(BlogPost), "b");
+        Expression? finalExpression = null;
+
+        var stringContainsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) })!;
+        var toLowerMethod = typeof(string).GetMethod("ToLower", Type.EmptyTypes)!;
+
+        foreach (var keyword in keywords)
+        {
+            var keywordConstant = Expression.Constant(keyword, typeof(string));
+
+            var titleProp = Expression.Property(parameter, "Title");
+            var titleToLower = Expression.Call(titleProp, toLowerMethod);
+            var titleContains = Expression.Call(titleToLower, stringContainsMethod, keywordConstant);
+
+            var contentProp = Expression.Property(parameter, "Content");
+            var contentToLower = Expression.Call(contentProp, toLowerMethod);
+            var contentContains = Expression.Call(contentToLower, stringContainsMethod, keywordConstant);
+
+            var authorProp = Expression.Property(parameter, "Author");
+            var authorNotNull = Expression.NotEqual(authorProp, Expression.Constant(null, typeof(User)));
+            var authorNameProp = Expression.Property(authorProp, "Name");
+            var authorNameToLower = Expression.Call(authorNameProp, toLowerMethod);
+            var authorNameContains = Expression.Call(authorNameToLower, stringContainsMethod, keywordConstant);
+            var authorCriteriaCombined = Expression.AndAlso(authorNotNull, authorNameContains);
+
+            var currentKeywordExpression = Expression.OrElse(
+                Expression.OrElse(titleContains, contentContains),
+                authorCriteriaCombined
+            );
+
+            finalExpression = finalExpression == null
+                ? currentKeywordExpression
+                : Expression.OrElse(finalExpression, currentKeywordExpression);
+        }
+
+        if (finalExpression != null)
+        {
+            var lambda = Expression.Lambda<Func<BlogPost, bool>>(finalExpression, parameter);
+            query = query.Where(lambda);
+        }
+
+        return await query.ToListAsync();
+    }
+}

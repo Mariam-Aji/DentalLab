@@ -1,19 +1,23 @@
 using DentalLab.Api.Models;
-using System;
-using System.Collections.Generic;
+using DentalLab.Api.Repositories;
 
 namespace DentalLab.Api.Services
 {
     public class ConnectionForLabService : IConnectionForLabService
     {
         private readonly IConnectionForLabRepository _connectionForLabRepository;
+        private readonly INotificationService _notifications;
 
-        public ConnectionForLabService(IConnectionForLabRepository connectionForLabRepository)
+        public ConnectionForLabService(
+            IConnectionForLabRepository connectionForLabRepository,
+            INotificationService notifications)
         {
             _connectionForLabRepository = connectionForLabRepository;
+            _notifications              = notifications;
         }
 
-        public async Task<(IEnumerable<ConnectionRequest> requests, string? error)> GetPendingRequestsForLabAsync(int labUserId)
+        public async Task<(IEnumerable<ConnectionRequest> requests, string? error)>
+            GetPendingRequestsForLabAsync(int labUserId)
         {
             var labId = await _connectionForLabRepository.GetLabIdByUserAsync(labUserId);
             if (labId == null) return (Array.Empty<ConnectionRequest>(), "المخبر غير موجود.");
@@ -22,7 +26,8 @@ namespace DentalLab.Api.Services
             return (requests, null);
         }
 
-        public async Task<(int count, string? error)> GetPendingRequestsCountForLabAsync(int labUserId)
+        public async Task<(int count, string? error)>
+            GetPendingRequestsCountForLabAsync(int labUserId)
         {
             var labId = await _connectionForLabRepository.GetLabIdByUserAsync(labUserId);
             if (labId == null) return (0, "المخبر غير موجود.");
@@ -37,11 +42,21 @@ namespace DentalLab.Api.Services
             if (labId == null) return "المخبر غير موجود.";
 
             var request = await _connectionForLabRepository.GetRequestForLabAsync(requestId, labId.Value);
-            if (request == null) return "الطلب غير موجود.";
-            if (request.Status != ConnectionRequestStatus.Pending) return "تمت معالجة الطلب مسبقاً.";
+            if (request == null)                                    return "الطلب غير موجود.";
+            if (request.Status != ConnectionRequestStatus.Pending)  return "تمت معالجة الطلب مسبقاً.";
 
-            var updated = await _connectionForLabRepository.UpdateRequestStatusAsync(request, ConnectionRequestStatus.Accepted);
-            return updated ? null : "فشل في تنفيذ العملية.";
+            var updated = await _connectionForLabRepository.UpdateRequestStatusAsync(
+                request, ConnectionRequestStatus.Accepted);
+            if (!updated) return "فشل في تنفيذ العملية.";
+
+            // إشعار الطبيب بقبول طلب الاتصال
+            await _notifications.SendAsync(
+                recipientUserId: request.FromDentistId,
+                message: "تم قبول طلب اتصالك بالمخبر. يمكنك الآن إرسال طلبياتك.",
+                type: NotificationType.ConnectionAccepted,
+                labId: labId.Value);
+
+            return null;
         }
 
         public async Task<string?> RejectRequestAsync(int labUserId, int requestId)
@@ -50,11 +65,21 @@ namespace DentalLab.Api.Services
             if (labId == null) return "المخبر غير موجود.";
 
             var request = await _connectionForLabRepository.GetRequestForLabAsync(requestId, labId.Value);
-            if (request == null) return "الطلب غير موجود.";
-            if (request.Status != ConnectionRequestStatus.Pending) return "تمت معالجة الطلب مسبقاً.";
+            if (request == null)                                    return "الطلب غير موجود.";
+            if (request.Status != ConnectionRequestStatus.Pending)  return "تمت معالجة الطلب مسبقاً.";
 
-            var updated = await _connectionForLabRepository.UpdateRequestStatusAsync(request, ConnectionRequestStatus.Rejected);
-            return updated ? null : "فشل في تنفيذ العملية.";
+            var updated = await _connectionForLabRepository.UpdateRequestStatusAsync(
+                request, ConnectionRequestStatus.Rejected);
+            if (!updated) return "فشل في تنفيذ العملية.";
+
+            // إشعار الطبيب برفض طلب الاتصال
+            await _notifications.SendAsync(
+                recipientUserId: request.FromDentistId,
+                message: "تم رفض طلب اتصالك بالمخبر.",
+                type: NotificationType.ConnectionRejected,
+                labId: labId.Value);
+
+            return null;
         }
     }
 }
