@@ -134,7 +134,6 @@ public class CaseOrderRepository : ICaseOrderRepository
             .OrderByDescending(co => co.CreatedAt)
             .ToListAsync();
     }
-    //
     public async Task<bool> AddCaseOrderItemsRangeAsync(List<CaseOrderItem> items)
     {
         await _context.CaseOrderItems.AddRangeAsync(items);
@@ -170,10 +169,8 @@ public class CaseOrderRepository : ICaseOrderRepository
             _context.FileResources.RemoveRange(orderWithDetails.Files);
         }
 
-        // حذف الطلبية الأساسية
         _context.CaseOrders.Remove(orderWithDetails);
 
-        // حفظ التغييرات نهائياً في قاعدة البيانات
         return await _context.SaveChangesAsync() > 0;
     }
     public async Task<OrderInvoice?> GetInvoiceByOrderIdAsync(int orderId)
@@ -198,12 +195,11 @@ public class CaseOrderRepository : ICaseOrderRepository
     public async Task<List<OrderInvoice>> GetInvoicesByOrderIdsAsync(List<int> orderIds)
     {
         return await _context.OrderInvoices
-            .Include(i => i.InvoiceItems) // 🌟 هذا السطر هو المسؤول عن ملء الـ items من الداتا بيز
+            .Include(i => i.InvoiceItems) 
             .Where(i => i.CaseOrderId.HasValue && orderIds.Contains(i.CaseOrderId.Value))
             .ToListAsync();
     }
 
-    // أضيفي هذه الميثودز في نهاية كلاس CaseOrderRepository
     public async Task UpdateInvoiceAsync(OrderInvoice invoice)
     {
         _context.OrderInvoices.Update(invoice);

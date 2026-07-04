@@ -521,7 +521,6 @@ namespace DentalLab.Api.Services
         }
         public async Task<(bool Success, string? Message, decimal RefundAmount)> CancelAndProcessOrderAsync(int caseOrderId, int labId, CancelCaseOrderDto dto)
 {
-    // 1. جلب الطلبية والتأكد من وجودها وتبعيّتها للمخبر المحدد
     var order = await _repo.GetOrderByIdAsync(caseOrderId);
     if (order == null) 
         return (false, "طلب التعويض غير موجود.", 0);
@@ -531,7 +530,6 @@ namespace DentalLab.Api.Services
 
     try
     {
-        // 2. حساب الفارق الزمني لمعالجة الشروط المالية للخصم والاسترداد
         var timeElapsed = DateTime.UtcNow - order.CreatedAt;
         decimal estimatedPrice = order.EstimatedPrice ?? 0;
         decimal refundAmount = 0;
@@ -539,26 +537,21 @@ namespace DentalLab.Api.Services
 
         if (timeElapsed.TotalDays <= 1)
         {
-            // مضى يوم واحد أو أقل -> استعادة المال كاملة
             refundAmount = estimatedPrice;
             financialAlertMessage = $"تم إلغاء الطلب في غضون 24 ساعة. تم استرداد المبلغ بالكامل: $.";
         }
         else
         {
-            // مضى أكثر من يوم -> خسارة 50% من القيمة المقدرة للطلب
             refundAmount = estimatedPrice * 0.5m;
             financialAlertMessage = $"تنبيه: مضى أكثر من يوم على إنشاء الطلب، تم خصم 50% كغرامة إلغاء.  المسترد: $.";
         }
 
-        // 3. صياغة نص الإشعار متضمناً رسالة الطبيب لسبب الإلغاء
         string cleanReason = string.IsNullOrWhiteSpace(dto.CancellationReason) ? "لم يتم ذكر سبب محدد" : dto.CancellationReason;
         string alertText = $"قام الطبيب بإلغاء الطلبية رقم ({caseOrderId}). سبب الإلغاء: {cleanReason}. {financialAlertMessage}";
 
-        // 4. جلب بيانات المخبر عبر مستودع الـ _repo المتاح في السيرفس حالياً
         var lab = await _repo.GetLabByIdAsync(labId); 
         if (lab == null) return (false, "لم يتم العثور على بيانات المخبر.", 0);
 
-        // 5. بناء الإشعار وحفظه في جدول الإشعارات لصاحب المخبر (UserId)
         var notification = new Notification
         {
             RecipientId = lab.UserId, 
@@ -569,11 +562,9 @@ namespace DentalLab.Api.Services
         };
         await _repo.SaveNotificationAsync(notification);
 
-        // 6. حذف الطلبية نهائياً من قاعدة البيانات
         var isDeleted = await _repo.DeleteOrderAsync(order);
         if (!isDeleted) return (false, "فشل في عملية حذف الطلبية من السيرفر.", 0);
 
-        // 📡 7. بث الإشعار اللحظي عبر الـ SignalR للـ Group وللـ User معاً
         string labGroupId = $"Lab_{labId}";
         await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
         await _hubContext.Clients.User(lab.UserId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
@@ -587,7 +578,6 @@ namespace DentalLab.Api.Services
 }
         public async Task<CaseOrderInvoiceDto> GetOrCreateOrderInvoiceAsync(int orderId, int dentistId)
         {
-            // 1. جلب الطلبية والتأكد من أنها تخص الطبيب صاحب التوكن الحالي
             var order = await _repo.GetOrderWithItemsAsync(orderId);
 
             if (order == null)
@@ -596,10 +586,8 @@ namespace DentalLab.Api.Services
             if (order.CreatedById != dentistId)
                 throw new UnauthorizedAccessException("غير مصرح لك بالوصول إلى هذه الفاتورة.");
 
-            // 2. التحقق مما إذا كانت الفاتورة قد حُفظت مسبقاً في قاعدة البيانات
             var existingInvoice = await _repo.GetInvoiceByOrderIdAsync(orderId);
 
-            // 3. حساب القيمة الإجمالية والتفصيلية للعناصر
             decimal total = 0;
             var itemsDtoList = new List<CaseOrderInvoiceItemDto>();
 
@@ -623,7 +611,6 @@ namespace DentalLab.Api.Services
                 });
             }
 
-            // 4. إذا لم تكن الفاتورة محفوظة بالداتا بيز، نقوم بإنشائها وحفظها الآن
             if (existingInvoice == null)
             {
                 var newInvoice = new OrderInvoice
@@ -637,7 +624,6 @@ namespace DentalLab.Api.Services
             }
            
 
-            // 5. بناء الـ DTO النهائي لإرجاعه للـ Controller
             var invoiceDto = new CaseOrderInvoiceDto
             {
                 CaseOrderId = order.Id,
@@ -647,7 +633,6 @@ namespace DentalLab.Api.Services
                 Items = itemsDtoList
             };
 
-            // تحديث السعر التقديري على الطلب نفسه كما في منطقك السابق
             order.EstimatedPrice = total;
             await _repo.UpdateOrderAsync(order);
 
@@ -678,7 +663,6 @@ namespace DentalLab.Api.Services
                 var itemsDtoList = new List<CaseOrderInvoiceItemDto>();
                 var invoiceItemsToSave = new List<OrderInvoiceItem>();
 
-                // حالة 1: الفاتورة موجودة مسبقاً في النظام
                 if (existingInvoicesMap.TryGetValue(order.Id, out var savedInvoice))
                 {
                     foreach (var savedItem in savedInvoice.InvoiceItems)
@@ -687,7 +671,6 @@ namespace DentalLab.Api.Services
                         {
                             CaseOrderItemId = savedItem.Id,
                             CaseOrderId = order.Id,
-                            // 🌟 الحل هنا: تحويل الـ string المخزن في الفاتورة إلى الـ Enum المطلوب في الـ DTO
                             CompensationType = Enum.Parse<DentalLab.Api.Models.CompensationType>(savedItem.CompensationType),
                             ToothNumbers = string.IsNullOrEmpty(savedItem.ToothNumbers)
                                 ? new List<int>()
@@ -709,7 +692,6 @@ namespace DentalLab.Api.Services
                     continue;
                 }
 
-                // حالة 2: حساب الفاتورة لأول مرة وحفظ تفاصيلها الثابتة
                 foreach (var item in order.Items)
                 {
                     var price = await _repo.GetLabPriceAsync(order.AssignedLabId!.Value, item.CompensationType);
@@ -722,7 +704,6 @@ namespace DentalLab.Api.Services
                     itemsDtoList.Add(new CaseOrderInvoiceItemDto
                     {
                         CaseOrderId = order.Id,
-                        // 🌟 الحل هنا: تمرير الـ Enum مباشرة للـ DTO دون عمل ToString()
                         CompensationType = item.CompensationType,
                         ToothNumbers = item.ToothNumbers ?? new List<int>(),
                         UnitPrice = unitPrice,
@@ -731,7 +712,6 @@ namespace DentalLab.Api.Services
 
                     invoiceItemsToSave.Add(new OrderInvoiceItem
                     {
-                        // هنا الـ Model يتوقع string، والـ ToString هنا صحيحة تماماً للتخزين الثابت
                         CompensationType = item.CompensationType.ToString(),
                         ToothNumbers = string.Join(",", item.ToothNumbers ?? new List<int>()),
                         UnitPrice = unitPrice,

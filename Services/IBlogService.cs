@@ -17,5 +17,18 @@ namespace DentalLab.Api.Services
         Task<IEnumerable<BlogPostResponseDto>> GetPendingDoctorPostsAsync();
         Task<List<Notification>> GetNotificationsByRecipientIdAsync(int recipientId);
         Task<(object? Data, string? Error)> SearchBlogPostsServiceAsync(string searchTerm);
+        Task<IEnumerable<BlogPostResponseDto>> GetPendingLabPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetPendingAllPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetApprovedDoctorPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetApprovedLabPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetApprovedAllPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetRejectedDoctorPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetRejectedLabPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetRejectedAllPostsAsync();
+        Task<IEnumerable<BlogPostResponseDto>> GetPendingPostsByDoctorIdAsync(int doctorId);
+
+        Task<IEnumerable<BlogPostResponseDto>> GetRejectedPostsByDoctorIdAsync(int doctorId);
+        Task<bool> DeleteDoctorPostAsync(int postId);
+
     }
 }

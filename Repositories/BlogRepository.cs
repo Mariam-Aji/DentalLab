@@ -155,4 +155,130 @@ public class BlogRepository : IBlogRepository
 
         return await query.ToListAsync();
     }
+    public async Task<IEnumerable<BlogPost>> GetPendingLabPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Type == BlogPostType.CommunityDiscussionLab && b.Status == BlogPostStatus.Pending)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<IEnumerable<BlogPost>> GetPendingAllPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => (b.Type == BlogPostType.CommunityDiscussionDoctor || b.Type == BlogPostType.CommunityDiscussionLab)
+                        && b.Status == BlogPostStatus.Pending)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<IEnumerable<BlogPost>> GetApprovedDoctorPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Type == BlogPostType.CommunityDiscussionDoctor && b.Status == BlogPostStatus.Approved)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<BlogPost>> GetApprovedLabPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Type == BlogPostType.CommunityDiscussionLab && b.Status == BlogPostStatus.Approved)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<BlogPost>> GetApprovedAllPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => (b.Type == BlogPostType.CommunityDiscussionDoctor || b.Type == BlogPostType.CommunityDiscussionLab)
+                        && b.Status == BlogPostStatus.Approved)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<IEnumerable<BlogPost>> GetRejectedDoctorPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Type == BlogPostType.CommunityDiscussionDoctor && b.Status == BlogPostStatus.Rejected)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<BlogPost>> GetRejectedLabPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Type == BlogPostType.CommunityDiscussionLab && b.Status == BlogPostStatus.Rejected)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<BlogPost>> GetRejectedAllPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => (b.Type == BlogPostType.CommunityDiscussionDoctor || b.Type == BlogPostType.CommunityDiscussionLab)
+                        && b.Status == BlogPostStatus.Rejected)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<bool> DeleteDoctorPostAsync(int postId)
+    {
+        var post = await _context.BlogPosts
+            .FirstOrDefaultAsync(b => b.Id == postId && b.Type == BlogPostType.CommunityDiscussionDoctor);
+
+        if (post == null) return false;
+
+        _context.BlogPosts.Remove(post);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<IEnumerable<BlogPost>> GetDoctorAllPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Type == BlogPostType.CommunityDiscussionDoctor)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+   
+    public async Task<IEnumerable<BlogPost>> GetPendingPostsByDoctorIdAsync(int doctorId)
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.AuthorId == doctorId
+                        && b.Type == BlogPostType.CommunityDiscussionDoctor
+                        && b.Status == BlogPostStatus.Pending)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<BlogPost>> GetRejectedPostsByDoctorIdAsync(int doctorId)
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.AuthorId == doctorId
+                        && b.Type == BlogPostType.CommunityDiscussionDoctor
+                        && b.Status == BlogPostStatus.Rejected)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
 }

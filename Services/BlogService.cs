@@ -95,7 +95,7 @@ public class BlogService : IBlogService
             Content = savedPost.Content,
             Type = savedPost.Type.ToString(),
             AuthorId = savedPost.AuthorId,
-            AuthorName = completePost?.Author != null ? completePost.Author.Name : "طبيب معروف", // 🎯 إظهار اسم الكاتب المطلوب
+            AuthorName = completePost?.Author != null ? completePost.Author.Name : "طبيب معروف", 
             IsSensitiveRedacted = savedPost.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "المنشور معلق بانتظار موافقة الأدمن ليتم نشره في العلن.",
@@ -171,21 +171,17 @@ public class BlogService : IBlogService
 
     public async Task<(bool success, string? error)> RejectPostAsync(int postId)
     {
-        // 1. جلب المنشور مع المرفقات للتأكد من وجوده
         var post = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(postId);
         if (post == null) return (false, "المنشور المحدد غير موجود.");
 
         int targetDoctorId = post.AuthorId;
         string postTitle = post.Title;
 
-        // 2. تحديث حالة المنشور إلى Rejected (والتي تساوي قيمتها 2 في الـ enum)
         post.Status = BlogPostStatus.Rejected;
 
-        // 3. حفظ التعديل في قاعدة البيانات عبر الـ Repository الحالية
         var isUpdated = await _blogRepo.UpdateBlogPostAsync(post);
         if (!isUpdated) return (false, "حدث خطأ أثناء محاولة تحديث حالة المنشور إلى مرفوض.");
 
-        // 4. تحديث إشعار الأدمن المعلق القديم واعتياره مقروءاً
         var adminId = await _blogRepo.GetAdminIdAsync();
         if (adminId.HasValue)
         {
@@ -197,11 +193,10 @@ public class BlogService : IBlogService
             }
         }
 
-        // 5. إرسال إشعار للطبيب لإعلامه بالرفض (مع إبقاء الـ BlogPostId مربوطاً ليتمكن من رؤيته وتعديله لاحقاً)
         await _blogRepo.SaveNotificationAsync(new Notification
         {
             RecipientId = targetDoctorId,
-            BlogPostId = post.Id, // 🎯 أصبحت آمنة الآن لأن المنشور لم يُحذف
+            BlogPostId = post.Id, 
             Message = $"🛑 نعتذر منك، لقد تم رفض نشر مقالك الطبي المعنون بـ '{postTitle}' لمخالفته شروط المراجعة، يمكنك تعديله وإعادة إرساله.",
             Type = NotificationType.StatusChanged,
             IsRead = false
@@ -214,7 +209,9 @@ public class BlogService : IBlogService
         var posts = await _blogRepo.GetBlogPostsByAuthorIdAsync(doctorId);
         var resultList = new List<BlogPostResponseDto>();
 
-        foreach (var post in posts)
+        var sortedPosts = posts.OrderByDescending(p => p.CreatedAt);
+
+        foreach (var post in sortedPosts)
         {
             resultList.Add(new BlogPostResponseDto
             {
@@ -226,9 +223,17 @@ public class BlogService : IBlogService
                 AuthorName = post.Author != null ? post.Author.Name : "طبيب معروف",
                 IsSensitiveRedacted = post.IsSensitiveRedacted,
                 Status = post.Status.ToString(),
-                ReviewMessage = post.Status == BlogPostStatus.Pending ? "معلق بانتظار المراجعة" : "منشور علني ومقبول",
+                ReviewMessage = post.Status == BlogPostStatus.Pending ? "معلق بانتظار المراجعة" :
+                                post.Status == BlogPostStatus.Rejected ? "تم رفض المنشور لمخالفته شروط النشر." : "منشور علني ومقبول",
                 CreatedAt = post.CreatedAt,
-                Attachments = post.Attachments.Select(a => new BlogAttachmentDto { Id = a.Id, Path = a.Path, Type = a.Type.ToString(), UploadedAt = a.UploadedAt, BlogPostId = post.Id }).ToList()
+                Attachments = post.Attachments.Select(a => new BlogAttachmentDto
+                {
+                    Id = a.Id,
+                    Path = a.Path,
+                    Type = a.Type.ToString(),
+                    UploadedAt = a.UploadedAt,
+                    BlogPostId = post.Id
+                }).ToList()
             });
         }
 
@@ -372,5 +377,184 @@ public class BlogService : IBlogService
         };
 
         return (response, null);
+    }
+    public async Task<IEnumerable<BlogPostResponseDto>> GetPendingLabPostsAsync()
+    {
+        var posts = await _blogRepo.GetPendingLabPostsAsync();
+
+        return posts.Select(b => new BlogPostResponseDto
+        {
+            PostId = b.Id,
+            Title = b.Title,
+            Content = b.Content,
+            Type = b.Type.ToString(),
+            AuthorId = b.AuthorId,
+            AuthorName = b.Author != null ? b.Author.Name : "مخبري غير معروف",
+            IsSensitiveRedacted = b.IsSensitiveRedacted,
+            Status = "Pending",
+            ReviewMessage = "معلق بانتظار مراجعة الأدمن",
+            CreatedAt = b.CreatedAt,
+            Attachments = b.Attachments.Select(a => new BlogAttachmentDto
+            {
+                Id = a.Id,
+                Path = a.Path,
+                Type = a.Type.ToString(),
+                UploadedAt = a.UploadedAt,
+                BlogPostId = b.Id
+            }).ToList()
+        });
+    }
+    public async Task<IEnumerable<BlogPostResponseDto>> GetPendingAllPostsAsync()
+    {
+        var posts = await _blogRepo.GetPendingAllPostsAsync();
+
+        return posts.Select(b => new BlogPostResponseDto
+        {
+            PostId = b.Id,
+            Title = b.Title,
+            Content = b.Content,
+            Type = b.Type.ToString(),
+            AuthorId = b.AuthorId,
+            AuthorName = b.Author != null ? b.Author.Name : (b.Type == BlogPostType.CommunityDiscussionDoctor ? "طبيب غير معروف" : "مخبري غير معروف"),
+            IsSensitiveRedacted = b.IsSensitiveRedacted,
+            Status = "Pending",
+            ReviewMessage = "معلق بانتظار المراجعة",
+            CreatedAt = b.CreatedAt,
+            Attachments = b.Attachments.Select(a => new BlogAttachmentDto
+            {
+                Id = a.Id,
+                Path = a.Path,
+                Type = a.Type.ToString(),
+                UploadedAt = a.UploadedAt,
+                BlogPostId = b.Id
+            }).ToList()
+        });
+    }
+    public async Task<IEnumerable<BlogPostResponseDto>> GetApprovedDoctorPostsAsync()
+    {
+        var posts = await _blogRepo.GetApprovedDoctorPostsAsync();
+        return MapToResponseDto(posts, "طبيب غير معروف");
+    }
+
+    public async Task<IEnumerable<BlogPostResponseDto>> GetApprovedLabPostsAsync()
+    {
+        var posts = await _blogRepo.GetApprovedLabPostsAsync();
+        return MapToResponseDto(posts, "مخبري غير معروف");
+    }
+
+    public async Task<IEnumerable<BlogPostResponseDto>> GetApprovedAllPostsAsync()
+    {
+        var posts = await _blogRepo.GetApprovedAllPostsAsync();
+        return posts.Select(b => new BlogPostResponseDto
+        {
+            PostId = b.Id,
+            Title = b.Title,
+            Content = b.Content,
+            Type = b.Type.ToString(),
+            AuthorId = b.AuthorId,
+            AuthorName = b.Author != null ? b.Author.Name : (b.Type == BlogPostType.CommunityDiscussionDoctor ? "طبيب غير معروف" : "مخبري غير معروف"),
+            IsSensitiveRedacted = b.IsSensitiveRedacted,
+            Status = "Approved",
+            ReviewMessage = "منشور علني ومقبول",
+            CreatedAt = b.CreatedAt,
+            Attachments = b.Attachments.Select(a => new BlogAttachmentDto { Id = a.Id, Path = a.Path, Type = a.Type.ToString(), UploadedAt = a.UploadedAt, BlogPostId = b.Id }).ToList()
+        });
+    }
+
+    private IEnumerable<BlogPostResponseDto> MapToResponseDto(IEnumerable<BlogPost> posts, string defaultAuthorName)
+    {
+        return posts.Select(b => new BlogPostResponseDto
+        {
+            PostId = b.Id,
+            Title = b.Title,
+            Content = b.Content,
+            Type = b.Type.ToString(),
+            AuthorId = b.AuthorId,
+            AuthorName = b.Author != null ? b.Author.Name : defaultAuthorName,
+            IsSensitiveRedacted = b.IsSensitiveRedacted,
+            Status = "Approved",
+            ReviewMessage = "منشور علني ومقبول",
+            CreatedAt = b.CreatedAt,
+            Attachments = b.Attachments.Select(a => new BlogAttachmentDto { Id = a.Id, Path = a.Path, Type = a.Type.ToString(), UploadedAt = a.UploadedAt, BlogPostId = b.Id }).ToList()
+        });
+    }
+    public async Task<IEnumerable<BlogPostResponseDto>> GetRejectedDoctorPostsAsync()
+    {
+        var posts = await _blogRepo.GetRejectedDoctorPostsAsync();
+        return MapToResponseDto(posts, "طبيب غير معروف");
+    }
+
+    public async Task<IEnumerable<BlogPostResponseDto>> GetRejectedLabPostsAsync()
+    {
+        var posts = await _blogRepo.GetRejectedLabPostsAsync();
+        return MapToResponseDto(posts, "مخبري غير معروف");
+    }
+
+    public async Task<IEnumerable<BlogPostResponseDto>> GetRejectedAllPostsAsync()
+    {
+        var posts = await _blogRepo.GetRejectedAllPostsAsync();
+        return posts.Select(b => new BlogPostResponseDto
+        {
+            PostId = b.Id,
+            Title = b.Title,
+            Content = b.Content,
+            Type = b.Type.ToString(),
+            AuthorId = b.AuthorId,
+            AuthorName = b.Author != null ? b.Author.Name : (b.Type == BlogPostType.CommunityDiscussionDoctor ? "طبيب غير معروف" : "مخبري غير معروف"),
+            IsSensitiveRedacted = b.IsSensitiveRedacted,
+            Status = "Rejected",
+
+            ReviewMessage = "تم رفض المنشور من قبل إدارة المنصة لمخالفته شروط النشر.",
+
+            CreatedAt = b.CreatedAt,
+            Attachments = b.Attachments.Select(a => new BlogAttachmentDto
+            {
+                Id = a.Id,
+                Path = a.Path,
+                Type = a.Type.ToString(),
+                UploadedAt = a.UploadedAt,
+                BlogPostId = b.Id
+            }).ToList()
+        });
+    }
+    public async Task<IEnumerable<BlogPostResponseDto>> GetPendingPostsByDoctorIdAsync(int doctorId)
+    {
+        var posts = await _blogRepo.GetPendingPostsByDoctorIdAsync(doctorId);
+        return MapToResponseDto(posts);
+    }
+
+    public async Task<IEnumerable<BlogPostResponseDto>> GetRejectedPostsByDoctorIdAsync(int doctorId)
+    {
+        var posts = await _blogRepo.GetRejectedPostsByDoctorIdAsync(doctorId);
+        return MapToResponseDto(posts);
+    }
+
+    private IEnumerable<BlogPostResponseDto> MapToResponseDto(IEnumerable<BlogPost> posts)
+    {
+        return posts.Select(b => new BlogPostResponseDto
+        {
+            PostId = b.Id,
+            Title = b.Title,
+            Content = b.Content,
+            Type = b.Type.ToString(),
+            AuthorId = b.AuthorId,
+            AuthorName = b.Author != null ? b.Author.Name : "طبيب غير معروف",
+            IsSensitiveRedacted = b.IsSensitiveRedacted,
+            Status = b.Status.ToString(),
+            ReviewMessage = b.Status == BlogPostStatus.Rejected
+                ? "تم رفض المنشور لمخالفته شروط النشر المعتمدة لدينا."
+                : "المنشور معلق بانتظار مراجعة الإدارة.",
+            CreatedAt = b.CreatedAt,
+            Attachments = b.Attachments.Select(a => new BlogAttachmentDto
+            {
+                Id = a.Id,
+                Path = a.Path,
+                BlogPostId = b.Id
+            }).ToList()
+        });
+    }
+    public async Task<bool> DeleteDoctorPostAsync(int postId)
+    {
+        return await _blogRepo.DeleteDoctorPostAsync(postId);
     }
 }
