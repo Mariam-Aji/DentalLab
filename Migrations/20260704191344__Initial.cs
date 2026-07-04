@@ -475,6 +475,27 @@ namespace DentalLab.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "OrderInvoices",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CaseOrderId = table.Column<int>(type: "int", nullable: true),
+                    TotalAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrderInvoices", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OrderInvoices_CaseOrders_CaseOrderId",
+                        column: x => x.CaseOrderId,
+                        principalTable: "CaseOrders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ScanVisitRequests",
                 columns: table => new
                 {
@@ -510,6 +531,30 @@ namespace DentalLab.Api.Migrations
                         name: "FK_ScanVisitRequests_Users_DentistId",
                         column: x => x.DentistId,
                         principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OrderInvoiceItem",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    OrderInvoiceId = table.Column<int>(type: "int", nullable: false),
+                    CompensationType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ToothNumbers = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UnitPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    TeethCount = table.Column<int>(type: "int", nullable: false),
+                    LineTotal = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrderInvoiceItem", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OrderInvoiceItem_OrderInvoices_OrderInvoiceId",
+                        column: x => x.OrderInvoiceId,
+                        principalTable: "OrderInvoices",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -612,6 +657,18 @@ namespace DentalLab.Api.Migrations
                 column: "RecipientId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_OrderInvoiceItem_OrderInvoiceId",
+                table: "OrderInvoiceItem",
+                column: "OrderInvoiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrderInvoices_CaseOrderId",
+                table: "OrderInvoices",
+                column: "CaseOrderId",
+                unique: true,
+                filter: "[CaseOrderId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Ratings_LabId",
                 table: "Ratings",
                 column: "LabId");
@@ -689,6 +746,9 @@ namespace DentalLab.Api.Migrations
                 name: "Notifications");
 
             migrationBuilder.DropTable(
+                name: "OrderInvoiceItem");
+
+            migrationBuilder.DropTable(
                 name: "Ratings");
 
             migrationBuilder.DropTable(
@@ -701,19 +761,22 @@ namespace DentalLab.Api.Migrations
                 name: "Templates");
 
             migrationBuilder.DropTable(
-                name: "CaseOrders");
+                name: "BlogPosts");
 
             migrationBuilder.DropTable(
-                name: "BlogPosts");
+                name: "OrderInvoices");
 
             migrationBuilder.DropTable(
                 name: "LabScanSlots");
 
             migrationBuilder.DropTable(
-                name: "Patients");
+                name: "CaseOrders");
 
             migrationBuilder.DropTable(
                 name: "Labs");
+
+            migrationBuilder.DropTable(
+                name: "Patients");
 
             migrationBuilder.DropTable(
                 name: "Users");

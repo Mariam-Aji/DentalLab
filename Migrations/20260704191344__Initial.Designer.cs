@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalLab.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260620010957_ConfigureInvoiceRelationship")]
-    partial class ConfigureInvoiceRelationship
+    [Migration("20260704191344__Initial")]
+    partial class _Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -143,6 +143,9 @@ namespace DentalLab.Api.Migrations
                     b.Property<string>("ImpressionType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsTemporary")
                         .HasColumnType("bit");
@@ -486,9 +489,15 @@ namespace DentalLab.Api.Migrations
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("LabId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("int");
 
                     b.Property<int>("RecipientId")
                         .HasColumnType("int");
@@ -514,23 +523,11 @@ namespace DentalLab.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CaseOrderId")
+                    b.Property<int?>("CaseOrderId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsPaid")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("MyFatoorahInvoiceId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("PaidAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PaymentUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
@@ -539,9 +536,47 @@ namespace DentalLab.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CaseOrderId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[CaseOrderId] IS NOT NULL");
 
                     b.ToTable("OrderInvoices");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.OrderInvoiceItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CompensationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("OrderInvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeethCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ToothNumbers")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderInvoiceId");
+
+                    b.ToTable("OrderInvoiceItem");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.Patient", b =>
@@ -971,10 +1006,20 @@ namespace DentalLab.Api.Migrations
                     b.HasOne("DentalLab.Api.Models.CaseOrder", "CaseOrder")
                         .WithOne("Invoice")
                         .HasForeignKey("DentalLab.Api.Models.OrderInvoice", "CaseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("CaseOrder");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.OrderInvoiceItem", b =>
+                {
+                    b.HasOne("DentalLab.Api.Models.OrderInvoice", "OrderInvoice")
+                        .WithMany("InvoiceItems")
+                        .HasForeignKey("OrderInvoiceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("CaseOrder");
+                    b.Navigation("OrderInvoice");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.Rating", b =>
@@ -1074,6 +1119,11 @@ namespace DentalLab.Api.Migrations
             modelBuilder.Entity("DentalLab.Api.Models.LabScanSlot", b =>
                 {
                     b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.OrderInvoice", b =>
+                {
+                    b.Navigation("InvoiceItems");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.Patient", b =>
