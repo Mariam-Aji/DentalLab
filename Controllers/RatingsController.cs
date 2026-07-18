@@ -58,7 +58,14 @@ namespace DentalLab.Api.Controllers
         [HttpGet("lab-profile/{labId}")]
         public async Task<IActionResult> GetLabProfile(int labId)
         {
-            var details = await _ratingService.GetLabProfileDetailsAsync(labId);
+            int? currentUserId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId))
+            {
+                currentUserId = parsedId;
+            }
+
+            var details = await _ratingService.GetLabProfileDetailsAsync(labId, currentUserId);
 
             if (details == null)
                 return NotFound(new { Message = "المخبر غير موجود" });
@@ -71,11 +78,16 @@ namespace DentalLab.Api.Controllers
             var labs = await _ratingService.GetLabsWithScanServiceAsync();
             return Ok(labs);
         }
-    }
-    //
+    
+    [HttpGet("available-labs")]
+        public async Task<IActionResult> GetAvailableLabs()
+        {
+            var labs = await _ratingService.GetAvailableLabsAsync();
+            return Ok(labs);
+        }
+
+    } }
 
 
 
-
-
-}
+    

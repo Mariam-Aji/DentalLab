@@ -232,7 +232,7 @@ public class AdvertisementController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Dentist")]
     [HttpGet("labs")]
     public async Task<IActionResult> GetAdvertisementsForLabs()
     {

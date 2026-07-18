@@ -3,6 +3,7 @@ using System;
 using System.Threading.Tasks;
 using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace DentalLab.Api.Controllers;
 
@@ -60,5 +61,29 @@ public class UsersController : ControllerBase
                 error = ex.Message
             });
         }
+
+    }
+    [HttpPost("upload-profile-picture")]
+    [Authorize(Roles = "Dentist")] 
+    public async Task<IActionResult> UploadProfilePicture(IFormFile file)
+    {
+       
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+            return Unauthorized(new { Message = "جلسة العمل منتهية، يرجى إعادة تسجيل الدخول." });
+
+        int dentistId = int.Parse(userIdClaim.Value);
+
+        
+        var (relativePath, error) = await _userService.UpdateProfilePictureAsync(dentistId, file);
+
+        if (error != null)
+            return BadRequest(new { Message = error });
+
+        return Ok(new
+        {
+            Message = "تم تحديث صورة البروفايل بنجاح.",
+            ProfilePictureUrl = relativePath
+        });
     }
 }

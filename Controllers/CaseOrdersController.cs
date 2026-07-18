@@ -228,6 +228,66 @@ public class CaseOrdersController : ControllerBase
         {
             return StatusCode(500, new { message = ex.Message });
         }
+
+    }
+    [HttpGet("my-orders-tracking")]
+    [Authorize(Roles = "Dentist")]
+    public async Task<IActionResult> GetMyOrdersTracking()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+            return Unauthorized(new { Message = "جلسة العمل منتهية أو غير صالحة." });
+
+        int dentistId = int.Parse(userIdClaim.Value);
+
+        var orders = await _service.GetDentistOrdersTrackingAsync(dentistId);
+
+        return Ok(orders);
+    }
+    [HttpGet("lab/{labId}/orders")]
+    [Authorize(Roles = "Dentist")] 
+    public async Task<IActionResult> GetMyOrdersWithSpecificLab(int labId)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+            return Unauthorized(new { Message = "جلسة العمل غير صالحة، يرجى إعادة تسجيل الدخول." });
+
+        int dentistId = int.Parse(userIdClaim.Value);
+
+        var orders = await _service.GetOrdersByDentistAndLabAsync(dentistId, labId);
+
+        return Ok(orders);
+    }
+    [HttpGet("dentist-personal-profile")]
+    [Authorize(Roles = "Dentist")]
+    public async Task<IActionResult> GetDentistPersonalProfile()
+    {
+        int dentistId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+        var profile = await _service.FetchDentistPersonalProfileAsync(dentistId);
+        if (profile == null)
+            return NotFound(new { Message = "لم يتم العثور على البيانات." });
+
+        return Ok(profile);
+    }
+
+    // 2️⃣ تابع تعديل البيانات الشخصية الفريد
+    [HttpPut("edit-personal-profile")]
+    [Authorize(Roles = "Dentist")]
+    public async Task<IActionResult> EditDentistPersonalProfile([FromForm] EditDentistOwnProfileDto dto)
+    {
+        int dentistId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+        var (profile, error) = await _service.ModifyDentistPersonalProfileAsync(dentistId, dto);
+
+        if (error != null)
+            return BadRequest(new { Message = error });
+
+        return Ok(new
+        {
+            Message = "تم تحديث البيانات بنجاح.",
+            Data = profile
+        });
     }
 }
 

@@ -23,6 +23,10 @@ namespace DentalLab.Api.Services
         Task<(bool Success, string? Message, decimal RefundAmount)> CancelAndProcessOrderAsync(int caseOrderId, int labId, CancelCaseOrderDto dto);
         Task<CaseOrderInvoiceDto> GetOrCreateOrderInvoiceAsync(int orderId, int dentistId);
         Task<List<CaseOrderInvoiceDto>> GetOrCreateDentistInvoicesAsync(int dentistId);
+        Task<object> GetDentistOrdersTrackingAsync(int dentistId);
+        Task<List<object>> GetOrdersByDentistAndLabAsync(int dentistId, int labId);
+        Task<DentistOwnProfileDetailsDto?> FetchDentistPersonalProfileAsync(int userId);
+        Task<(DentistOwnProfileDetailsDto? Profile, string? Error)> ModifyDentistPersonalProfileAsync(int userId, EditDentistOwnProfileDto dto);
     }
 }
 //

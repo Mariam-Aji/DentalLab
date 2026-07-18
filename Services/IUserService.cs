@@ -7,4 +7,5 @@ public interface IUserService
 {
     Task<(object? Data, string? Error)> SearchUsersServiceAsync(string searchTerm);
     Task<(object? Data, string? Error)> GetAllDentistsServiceAsync();
+    Task<(string? RelativePath, string? Error)> UpdateProfilePictureAsync(int userId, IFormFile file);
 }

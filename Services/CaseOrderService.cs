@@ -750,5 +750,83 @@ namespace DentalLab.Api.Services
 
             return finalInvoicesResult;
         }
+        public async Task<object> GetDentistOrdersTrackingAsync(int dentistId)
+        {
+            return await _repo.GetDentistOrdersWithDetailsAsync(dentistId);
+        }
+        public async Task<List<object>> GetOrdersByDentistAndLabAsync(int dentistId, int labId)
+        {
+            return await _repo.GetOrdersByDentistAndLabAsync(dentistId, labId);
+        }
+        public async Task<DentistOwnProfileDetailsDto?> FetchDentistPersonalProfileAsync(int userId)
+        {
+            var user = await _repo.GetUserByIdAsync(userId);
+            if (user == null) return null;
+
+            return new DentistOwnProfileDetailsDto
+            {
+                DentistId = user.Id, // 👈 إرجاع المعرّف في الريسبونس
+                Email = user.Email,
+                Phone = user.Phone,
+                CityPlace = user.CityPlace,
+                ProfilePictureUrl = user.ProfilePictureUrl
+            };
+        }
+
+        public async Task<(DentistOwnProfileDetailsDto? Profile, string? Error)> ModifyDentistPersonalProfileAsync(int userId, EditDentistOwnProfileDto dto)
+        {
+            var user = await _repo.GetUserByIdAsync(userId);
+            if (user == null) return (null, "المستخدم غير موجود.");
+
+            if (dto.Phone != null) user.Phone = dto.Phone;
+            if (dto.CityPlace != null) user.CityPlace = dto.CityPlace;
+
+            if (dto.ProfilePicture != null && dto.ProfilePicture.Length > 0)
+            {
+                if (dto.ProfilePicture.Length > 5 * 1024 * 1024)
+                    return (null, "حجم الصورة كبير جداً (الحد الأقصى 5 ميغابايت).");
+
+                var ext = Path.GetExtension(dto.ProfilePicture.FileName).ToLowerInvariant();
+                var allowed = new[] { ".jpg", ".jpeg", ".png" };
+                if (!allowed.Contains(ext))
+                    return (null, "امتداد الصورة غير مدعوم.");
+
+                var uploadsRoot = Path.Combine(_env.ContentRootPath, "uploads", "dentists", userId.ToString(), "profile");
+                Directory.CreateDirectory(uploadsRoot);
+
+                var fileName = $"{Guid.NewGuid():N}{ext}";
+                var fullPath = Path.Combine(uploadsRoot, fileName);
+
+                await using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.ProfilePicture.CopyToAsync(stream);
+                }
+
+                if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
+                {
+                    var oldFullPath = Path.Combine(_env.ContentRootPath, user.ProfilePictureUrl.Replace("/", "\\"));
+                    if (File.Exists(oldFullPath))
+                    {
+                        try { File.Delete(oldFullPath); } catch { }
+                    }
+                }
+
+                user.ProfilePictureUrl = Path.Combine("uploads", "dentists", userId.ToString(), "profile", fileName).Replace("\\", "/");
+            }
+
+            var success = await _repo.UpdateUserAsync(user);
+            if (!success) return (null, "فشل في حفظ التعديلات بقاعدة البيانات.");
+
+            var updatedProfile = new DentistOwnProfileDetailsDto
+            {
+                DentistId = user.Id, // 👈 إرجاع المعرّف هنا أيضاً بعد التعديل
+                Email = user.Email,
+                Phone = user.Phone,
+                CityPlace = user.CityPlace,
+                ProfilePictureUrl = user.ProfilePictureUrl
+            };
+
+            return (updatedProfile, null);
+        }
     }
 }

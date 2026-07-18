@@ -84,7 +84,18 @@ public class UserRepository : IUserRepository
         return await _context.Users
             .AsNoTracking()
             .Where(u => u.Role == UserRole.Dentist)
-            .OrderByDescending(u => u.CreatedAt) // عرض الأحدث أولاً
+            .OrderByDescending(u => u.CreatedAt) 
             .ToListAsync();
     }
+    public async Task<User?> GetUserByIdAsync(int userId)
+    {
+        return await _context.Users.FindAsync(userId);
+    }
+
+    public async Task<bool> UpdateUserAsync(User user)
+    {
+        _context.Users.Update(user);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
 }

@@ -14,6 +14,9 @@ namespace DentalLab.Api.Repositories
         Task<object?> GetLabFullDetailsAsync(int labId);
         Task<List<object>> GetLabsByScanVisitServiceAsync();
         //
+        Task<object?> GetLabFullDetailsAsync(int labId, int? currentUserId = null);
+        Task<List<object>> GetAvailableLabsAsync();
+
     }
 
 }

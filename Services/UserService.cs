@@ -10,10 +10,11 @@ namespace DentalLab.Api.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepo;
-
-    public UserService(IUserRepository userRepo)
+    private readonly IWebHostEnvironment _env;
+    public UserService(IUserRepository userRepo, IWebHostEnvironment env)
     {
         _userRepo = userRepo;
+        _env = env;
     }
 
     public async Task<(object? Data, string? Error)> SearchUsersServiceAsync(string searchTerm)
@@ -21,7 +22,6 @@ public class UserService : IUserService
         if (string.IsNullOrWhiteSpace(searchTerm))
             return (null, "يرجى إدخال كلمة مفتاحية للبحث.");
 
-        // استدعاء الريبو الذكي
         var users = await _userRepo.SearchUsersForAdminAsync(searchTerm);
 
         if (users == null || users.Count == 0)
@@ -34,11 +34,10 @@ public class UserService : IUserService
             }, null);
         }
 
-        // 🎯 الفلترة والتصنيف التلقائي حسب الـ Role الخاص بكل سجل مسترجع
         var categorizedData = users
             .GroupBy(u => u.Role.ToString())
             .ToDictionary(
-                group => group.Key, // الفئة (Dentist, Lab, Admin...)
+                group => group.Key, 
                 group => group.Select(u => new
                 {
                     u.Id,
@@ -55,7 +54,7 @@ public class UserService : IUserService
         {
             TotalResults = users.Count,
             SearchQuery = searchTerm,
-            CategorizedResults = categorizedData // مجمعة وجاهزة للعرض المقسم
+            CategorizedResults = categorizedData 
         };
 
         return (response, null);
@@ -74,7 +73,6 @@ public class UserService : IUserService
             }, null);
         }
 
-        // تشكيل البيانات المطلوبة فقط
         var result = new
         {
             Count = doctors.Count,
@@ -95,4 +93,53 @@ public class UserService : IUserService
 
         return (result, null);
     }
+    public async Task<(string? RelativePath, string? Error)> UpdateProfilePictureAsync(int userId, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return (null, "الملف غير صالح.");
+
+        const long maxBytes = 5 * 1024 * 1024;
+        if (file.Length > maxBytes)
+            return (null, "حجم الصورة كبير جداً، الحد الأقصى المسموح به هو 5 ميغابايت.");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+        if (!allowedExtensions.Contains(ext))
+            return (null, "صيغة الصورة غير مدعومة. الصيغ المسموحة هي: JPG, JPEG, PNG.");
+
+        var user = await _userRepo.GetUserByIdAsync(userId);
+        if (user == null)
+            return (null, "المستخدم غير موجود في النظام.");
+
+        var uploadsRoot = Path.Combine(_env.ContentRootPath, "uploads", "dentists", userId.ToString(), "profile");
+        Directory.CreateDirectory(uploadsRoot);
+
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(uploadsRoot, fileName);
+
+        await using (var stream = new FileStream(fullPath, FileMode.Create))
+        {
+            file.CopyTo(stream);
+        }
+
+        var relativePath = Path.Combine("uploads", "dentists", userId.ToString(), "profile", fileName).Replace("\\", "/");
+
+        if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
+        {
+            var oldFullPath = Path.Combine(_env.ContentRootPath, user.ProfilePictureUrl.Replace("/", "\\"));
+            if (File.Exists(oldFullPath))
+            {
+                try { File.Delete(oldFullPath); } catch { }
+            }
+        }
+
+        user.ProfilePictureUrl = relativePath;
+        var success = await _userRepo.UpdateUserAsync(user);
+
+        if (!success)
+            return (null, "فشل في حفظ مسار الصورة ضمن قاعدة البيانات.");
+
+        return (relativePath, null);
+    }
+
 }

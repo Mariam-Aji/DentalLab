@@ -7,5 +7,7 @@
     Task<List<object>> GetLabsByDoctorLocationAsync(int doctorId);
     Task<object?> GetLabProfileDetailsAsync(int labId);
     Task<List<object>> GetLabsWithScanServiceAsync();
+    Task<object?> GetLabProfileDetailsAsync(int labId, int? currentUserId = null);
+    Task<List<object>> GetAvailableLabsAsync();
 }
 //

@@ -93,4 +93,12 @@ public class RatingService : IRatingService
         return await _ratingRepository.GetLabsByScanVisitServiceAsync();
     }
     //
+    public async Task<object?> GetLabProfileDetailsAsync(int labId, int? currentUserId = null)
+    {
+        return await _ratingRepository.GetLabFullDetailsAsync(labId, currentUserId);
+    }
+    public async Task<List<object>> GetAvailableLabsAsync()
+{
+    return await _ratingRepository.GetAvailableLabsAsync();
+}
 }

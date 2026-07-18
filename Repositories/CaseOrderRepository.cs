@@ -210,6 +210,158 @@ public class CaseOrderRepository : ICaseOrderRepository
         await _context.OrderInvoices.AddRangeAsync(invoices);
         await _context.SaveChangesAsync();
     }
+    public async Task<object> GetDentistOrdersWithDetailsAsync(int dentistId)
+    {
+        var dbOrders = await _context.CaseOrders
+            .Include(c => c.CreatedBy)
+            .Include(c => c.AssignedLab)
+                .ThenInclude(l => l!.Owner)
+            .Include(c => c.Patient)
+            .Include(c => c.Items)
+            .Include(c => c.Files)
+            .Where(c => c.CreatedById == dentistId)
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
 
+        var formattedOrders = dbOrders.Select(c => new
+        {
+            c.Id,
+            c.Title,
+            Status = c.Status.ToString(),
+            ImpressionStage = c.ImpressionStage.ToString(),
+            ImpressionType = c.ImpressionType.ToString(),
+            c.Shade,
+            c.IsTemporary,
+            c.IsUrgent,
+            c.HasAccessories,
+            c.Notes,
+            c.RequiredImages,
+            c.DeliveryDate,
+            c.CreatedAt,
+
+            EstimatedPrice = c.EstimatedPrice ?? 0,
+            FinalPrice = c.FinalPrice ?? 0,
+            TotalPriceToPay = c.FinalPrice ?? c.EstimatedPrice ?? 0,
+            IsPaid = c.IsPaid,
+
+            Patient = c.Patient == null ? null : new
+            {
+                c.Patient.Id,
+                c.Patient.FullName,
+                c.Patient.Age,
+                c.Patient.ClinicalNotes
+            },
+
+            AssignedLab = c.AssignedLab == null ? null : new
+            {
+                c.AssignedLab.Id,
+                LabName = c.AssignedLab.Owner?.Name,
+                Phone = c.AssignedLab.Owner?.Phone,
+                City = c.AssignedLab.Owner?.CityPlace,
+                ProfilePictureUrl = c.AssignedLab.Owner?.ProfilePictureUrl
+            },
+
+            OrderItems = c.Items.Select(item => new
+            {
+                item.Id,
+                CompensationType = item.CompensationType.ToString(),
+                item.ToothNumbers
+            }).ToList(),
+
+            Files = c.Files.Select(f => new
+            {
+                f.Id,
+                Url = f.Path
+            }).ToList()
+        }).ToList();
+
+        var allStatuses = Enum.GetValues<CaseStatus>();
+
+        var groupedResult = allStatuses.ToDictionary(
+            status => status.ToString(),
+            status => formattedOrders.Where(o => o.Status == status.ToString()).ToList() 
+        );
+
+        return groupedResult;
+    }
+
+    public async Task<List<object>> GetOrdersByDentistAndLabAsync(int dentistId, int labId)
+    {
+        // 1. جلب التقييم الذي وضعه هذا الطبيب لهذا المخبر (إن وجد)
+        var myRating = await _context.Ratings
+            .Where(r => r.ReviewerId == dentistId && r.LabId == labId)
+            .Select(r => new
+            {
+                r.Id,
+                r.Overall,
+                r.TimeCommitment,
+                r.Quality,
+                r.Comment,
+                r.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        // 2. جلب قائمة الطلبيات المشتركة بينهما مع كامل التفاصيل
+        var orders = await _context.CaseOrders
+            .Include(c => c.Patient)
+            .Include(c => c.Items)
+            .Where(c => c.CreatedById == dentistId && c.AssignedLabId == labId)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new
+            {
+                c.Id,
+                c.Title,
+                Status = c.Status.ToString(),
+                IsUrgent = c.IsUrgent,
+                ImpressionStage = c.ImpressionStage.ToString(),
+                ImpressionType = c.ImpressionType.ToString(),
+                c.Shade,
+                c.IsTemporary,
+                c.DeliveryDate,
+                c.Notes,
+                c.HasAccessories,
+                c.RequiredImages,
+                c.EstimatedPrice,
+                c.FinalPrice,
+                c.IsPaid,
+                c.CreatedAt,
+                PatientName = c.Patient != null ? c.Patient.FullName : "مريض غير محدد",
+                PatientDetails = c.Patient == null ? null : new
+                {
+                    c.Patient.Id,
+                    c.Patient.Age,
+                    c.Patient.ClinicalNotes
+                },
+                Items = c.Items.Select(item => new
+                {
+                    item.Id,
+                    CompensationType = item.CompensationType.ToString(),
+                    item.ToothNumbers
+                }).ToList()
+            })
+            .ToListAsync();
+
+        // 3. دمج البيانات بداخل List<object> متوافقة تماماً مع الـ Interface
+        return new List<object>
+    {
+        new
+        {
+            DentistId = dentistId,
+            MyRating = myRating,
+            Orders = orders
+        }
+    };
+    }
+    public async Task<bool> UpdateUserAsync(User user)
+    {
+        _context.Users.Update(user);
+        return await _context.SaveChangesAsync() > 0;
+    }
+    public async Task<User?> GetUserByIdAsync(int userId)
+    {
+        return await _context.Users.FindAsync(userId);
+    }
+
+    
 }
     
