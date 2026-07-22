@@ -216,7 +216,7 @@ public class AdvertisementController : ControllerBase
         });
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Dentist")]
     [HttpGet("dentists")]
     public async Task<IActionResult> GetAdvertisementsForDentists()
     {
