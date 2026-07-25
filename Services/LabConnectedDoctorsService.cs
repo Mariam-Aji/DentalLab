@@ -69,14 +69,15 @@ public class LabConnectedDoctorsService : ILabConnectedDoctorsService
 
     private static ConnectedDoctorDto MapDoctor(User u) => new()
     {
-        Id            = u.Id,
-        Name          = u.Name,
-        Email         = u.Email,
-        Phone         = u.Phone,
-        ClinicName    = u.NamePlace,
-        ClinicAddress = u.AddressPlace,
-        City          = u.CityPlace,
-        Country       = u.CountryPlace
+        Id              = u.Id,
+        Name            = u.Name,
+        Email           = u.Email,
+        Phone           = u.Phone,
+        ClinicName      = u.NamePlace,
+        ClinicAddress   = u.AddressPlace,
+        City            = u.CityPlace,
+        Country         = u.CountryPlace,
+        ProfilePictureUrl = u.ProfilePictureUrl
     };
 
     private static LabPendingOrderDto MapOrder(CaseOrder co) => new()

@@ -14,5 +14,6 @@ public interface ILabBlogRepository
     Task<Notification?> GetNotificationByPostTitleAsync(int adminId, string postTitle);
     Task<List<BlogPost>> GetBlogPostsByAuthorIdAndStatusAsync(int authorId, BlogPostType type, BlogPostStatus? status);
     Task<List<BlogPost>> GetBlogPostsByTypeAndStatusAsync(BlogPostType type, BlogPostStatus? status);
+    Task<List<BlogPost>> GetAllApprovedPostsAsync();
     Task<List<BlogPost>> SearchBlogPostsAsync(string searchTerm);
 }

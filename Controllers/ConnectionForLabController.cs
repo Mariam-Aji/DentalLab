@@ -37,6 +37,7 @@ public class ConnectionForLabController : ControllerBase
                 r.FromDentist.AddressPlace,
                 r.FromDentist.CityPlace,
                 r.FromDentist.CountryPlace,
+                r.FromDentist.ProfilePictureUrl,
             }
         });
 

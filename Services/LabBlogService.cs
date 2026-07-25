@@ -25,7 +25,7 @@ public class LabBlogService : ILabBlogService
         _hubContext = hubContext;
     }
 
-    public async Task<(BlogPostResponseDto? result, string? error)> CreateLabPostAsync(CreatePostDto dto, int labId)
+    public async Task<(BlogPostWriteResponseDto? result, string? error)> CreateLabPostAsync(CreatePostDto dto, int labId)
     {
         return await CreatePostAsync(
             dto,
@@ -37,7 +37,7 @@ public class LabBlogService : ILabBlogService
             "مخبري معروف");
     }
 
-    public async Task<(BlogPostResponseDto? result, string? error)> UpdateLabPostAsync(int postId, UpdatePostDto dto, int labId)
+    public async Task<(BlogPostWriteResponseDto? result, string? error)> UpdateLabPostAsync(int postId, UpdatePostDto dto, int labId)
     {
         var post = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(postId);
         if (post == null) return (null, "المنشور المحدد غير موجود.");
@@ -75,7 +75,7 @@ public class LabBlogService : ILabBlogService
             await SaveAndBroadcastAdminNotificationAsync(adminId.Value, post.Id, message);
         }
 
-        return (MapPostResponse(post, post.Author?.Name ?? "مخبري معروف", "تم تعديل المنشور بنجاح وإعادته للمراجعة معلقاً."), null);
+        return (MapWriteResponse(post, post.Author?.Name ?? "مخبري معروف", "تم تعديل المنشور بنجاح وإعادته للمراجعة معلقاً."), null);
     }
 
     public async Task<List<BlogPostResponseDto>> GetLabApprovedPostsAsync(int labId)
@@ -115,7 +115,7 @@ public class LabBlogService : ILabBlogService
         return success ? (true, null) : (false, "فشل حذف المنشور.");
     }
 
-    private async Task<(BlogPostResponseDto? result, string? error)> CreatePostAsync(
+    private async Task<(BlogPostWriteResponseDto? result, string? error)> CreatePostAsync(
         CreatePostDto dto,
         int authorId,
         string folderName,
@@ -152,7 +152,7 @@ public class LabBlogService : ILabBlogService
             await SaveAndBroadcastAdminNotificationAsync(adminId.Value, savedPost.Id, message);
         }
 
-        return (MapPostResponse(savedPost, completePost?.Author?.Name ?? authorNameFallback, pendingReviewMessage), null);
+        return (MapWriteResponse(savedPost, completePost?.Author?.Name ?? authorNameFallback, pendingReviewMessage), null);
     }
 
     private async Task<(List<FileResource> Files, string? Error)> SaveAttachmentsAsync(IEnumerable<IFormFile>? files, int authorId, string folderName)
@@ -238,16 +238,41 @@ public class LabBlogService : ILabBlogService
     private async Task<List<BlogPostResponseDto>> GetPostsByAuthorAndStatusAsync(int authorId, BlogPostType type, BlogPostStatus? status, string authorNameFallback, string reviewMessage)
     {
         var posts = await _blogRepo.GetBlogPostsByAuthorIdAndStatusAsync(authorId, type, status);
-        return posts.Select(post => MapPostResponse(post, post.Author?.Name ?? authorNameFallback, reviewMessage)).ToList();
+        return posts.Select(post => MapPostResponse(post, post.Author?.Name ?? authorNameFallback, reviewMessage, includeProfilePicture: true)).ToList();
     }
 
     private async Task<List<BlogPostResponseDto>> GetPostsByTypeAndStatusAsync(BlogPostType type, BlogPostStatus? status, string authorNameFallback, string reviewMessage)
     {
         var posts = await _blogRepo.GetBlogPostsByTypeAndStatusAsync(type, status);
-        return posts.Select(post => MapPostResponse(post, post.Author?.Name ?? authorNameFallback, reviewMessage)).ToList();
+        return posts.Select(post => MapPostResponse(post, post.Author?.Name ?? authorNameFallback, reviewMessage, includeProfilePicture: true)).ToList();
     }
 
-    private static BlogPostResponseDto MapPostResponse(BlogPost post, string authorName, string reviewMessage)
+    private static BlogPostWriteResponseDto MapWriteResponse(BlogPost post, string authorName, string reviewMessage)
+    {
+        return new BlogPostWriteResponseDto
+        {
+            PostId              = post.Id,
+            Title               = post.Title,
+            Content             = post.Content,
+            Type                = post.Type.ToString(),
+            AuthorId            = post.AuthorId,
+            AuthorName          = authorName,
+            IsSensitiveRedacted = post.IsSensitiveRedacted,
+            Status              = post.Status.ToString(),
+            ReviewMessage       = reviewMessage,
+            CreatedAt           = post.CreatedAt,
+            Attachments         = post.Attachments.Select(a => new BlogAttachmentDto
+            {
+                Id         = a.Id,
+                Path       = a.Path,
+                Type       = a.Type.ToString(),
+                UploadedAt = a.UploadedAt,
+                BlogPostId = post.Id
+            }).ToList()
+        };
+    }
+
+    private static BlogPostResponseDto MapPostResponse(BlogPost post, string authorName, string reviewMessage, bool includeProfilePicture = false)
     {
         return new BlogPostResponseDto
         {
@@ -257,6 +282,7 @@ public class LabBlogService : ILabBlogService
             Type = post.Type.ToString(),
             AuthorId = post.AuthorId,
             AuthorName = authorName,
+            AuthorProfilePictureUrl = includeProfilePicture ? post.Author?.ProfilePictureUrl : null,
             IsSensitiveRedacted = post.IsSensitiveRedacted,
             Status = post.Status.ToString(),
             ReviewMessage = reviewMessage,
@@ -270,6 +296,12 @@ public class LabBlogService : ILabBlogService
                 BlogPostId = post.Id
             }).ToList()
         };
+    }
+
+    public async Task<List<BlogPostResponseDto>> GetAllApprovedPostsAsync()
+    {
+        var posts = await _blogRepo.GetAllApprovedPostsAsync();
+        return posts.Select(post => MapPostResponse(post, post.Author?.Name ?? "كاتب معروف", "منشور علني ومقبول", includeProfilePicture: true)).ToList();
     }
 
     public async Task<(object? Data, string? Error)> SearchBlogPostsServiceAsync(string searchTerm)
@@ -300,8 +332,16 @@ public class LabBlogService : ILabBlogService
                     Content = p.Content,
                     AuthorName = p.Author != null ? p.Author.Name : "كاتب مجهول",
                     AuthorId = p.AuthorId,
+                    AuthorProfilePictureUrl = p.Author?.ProfilePictureUrl,
                     Status = p.Status.ToString(),
-                    p.CreatedAt
+                    p.CreatedAt,
+                    Attachments = p.Attachments.Select(a => new
+                    {
+                        a.Id,
+                        a.Path,
+                        Type = a.Type.ToString(),
+                        a.UploadedAt
+                    }).ToList()
                 }).ToList()
             );
 

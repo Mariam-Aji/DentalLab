@@ -79,6 +79,7 @@ builder.Services.AddScoped<IAdminAccountsRepository, AccountsRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ILabGalleryService, LabGalleryService>();
 builder.Services.AddScoped<ILabProfileService, LabProfileService>();
+builder.Services.AddScoped<ILabMyFatoorahCodeService, LabMyFatoorahCodeService>();
 builder.Services.AddScoped<IAdminAccountService, AdminAccountService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IFileService, FileService>();
@@ -127,6 +128,9 @@ builder.Services.AddScoped<ISearchRepository, SearchRepository>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
+builder.Services.AddScoped<IProfilePictureService, ProfilePictureService>();
+builder.Services.AddScoped<ILabAdvertisementService, LabAdvertisementService>();
+builder.Services.AddScoped<ILabAdCreateService, LabAdCreateService>();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });

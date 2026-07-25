@@ -11,7 +11,7 @@ public class CreateAdvertisementDto
 
     public string? Content { get; set; } = null!;
 
-    public TargetAudience Target { get; set; }
+    public TargetAudience Target { get; set; } = TargetAudience.Dentists;
 
     public IFormFileCollection? ImageFiles { get; set; }
 

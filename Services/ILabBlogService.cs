@@ -5,8 +5,8 @@ namespace DentalLab.Api.Services;
 
 public interface ILabBlogService
 {
-    Task<(BlogPostResponseDto? result, string? error)> CreateLabPostAsync(CreatePostDto dto, int labId);
-    Task<(BlogPostResponseDto? result, string? error)> UpdateLabPostAsync(int postId, UpdatePostDto dto, int labId);
+    Task<(BlogPostWriteResponseDto? result, string? error)> CreateLabPostAsync(CreatePostDto dto, int labId);
+    Task<(BlogPostWriteResponseDto? result, string? error)> UpdateLabPostAsync(int postId, UpdatePostDto dto, int labId);
     Task<List<BlogPostResponseDto>> GetLabApprovedPostsAsync(int labId);
     Task<List<BlogPostResponseDto>> GetLabPendingPostsAsync(int labId);
     Task<List<BlogPostResponseDto>> GetLabRejectedPostsAsync(int labId);
@@ -14,4 +14,5 @@ public interface ILabBlogService
     Task<List<BlogPostResponseDto>> GetApprovedDoctorPostsAsync();
     Task<(bool success, string? error)> DeleteLabPostAsync(int postId, int labId);
     Task<(object? Data, string? Error)> SearchBlogPostsServiceAsync(string searchTerm);
+    Task<List<BlogPostResponseDto>> GetAllApprovedPostsAsync();
 }
