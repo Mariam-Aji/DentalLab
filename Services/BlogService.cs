@@ -71,8 +71,6 @@ public class BlogService : IBlogService
         };
 
         var savedPost = await _blogRepo.SaveBlogPostAsync(blogPost);
-
-
         var completePost = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(savedPost.Id);
 
         var adminId = await _blogRepo.GetAdminIdAsync();
@@ -95,7 +93,8 @@ public class BlogService : IBlogService
             Content = savedPost.Content,
             Type = savedPost.Type.ToString(),
             AuthorId = savedPost.AuthorId,
-            AuthorName = completePost?.Author != null ? completePost.Author.Name : "طبيب معروف", 
+            AuthorName = completePost?.Author != null ? completePost.Author.Name : "طبيب معروف",
+            AuthorProfilePictureUrl = completePost?.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = savedPost.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "المنشور معلق بانتظار موافقة الأدمن ليتم نشره في العلن.",
@@ -152,6 +151,7 @@ public class BlogService : IBlogService
             Type = post.Type.ToString(),
             AuthorId = post.AuthorId,
             AuthorName = post.Author != null ? post.Author.Name : "طبيب معروف",
+            AuthorProfilePictureUrl = post.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = post.IsSensitiveRedacted,
             Status = "Approved",
             ReviewMessage = "تم قبول المنشور ونُشر بنجاح!",
@@ -196,7 +196,7 @@ public class BlogService : IBlogService
         await _blogRepo.SaveNotificationAsync(new Notification
         {
             RecipientId = targetDoctorId,
-            BlogPostId = post.Id, 
+            BlogPostId = post.Id,
             Message = $"🛑 نعتذر منك، لقد تم رفض نشر مقالك الطبي المعنون بـ '{postTitle}' لمخالفته شروط المراجعة، يمكنك تعديله وإعادة إرساله.",
             Type = NotificationType.StatusChanged,
             IsRead = false
@@ -204,6 +204,7 @@ public class BlogService : IBlogService
 
         return (true, null);
     }
+
     public async Task<List<BlogPostResponseDto>> GetDoctorPostsAsync(int doctorId)
     {
         var posts = await _blogRepo.GetBlogPostsByAuthorIdAsync(doctorId);
@@ -221,6 +222,7 @@ public class BlogService : IBlogService
                 Type = post.Type.ToString(),
                 AuthorId = post.AuthorId,
                 AuthorName = post.Author != null ? post.Author.Name : "طبيب معروف",
+                AuthorProfilePictureUrl = post.Author?.ProfilePictureUrl,
                 IsSensitiveRedacted = post.IsSensitiveRedacted,
                 Status = post.Status.ToString(),
                 ReviewMessage = post.Status == BlogPostStatus.Pending ? "معلق بانتظار المراجعة" :
@@ -302,6 +304,7 @@ public class BlogService : IBlogService
             Type = post.Type.ToString(),
             AuthorId = post.AuthorId,
             AuthorName = post.Author != null ? post.Author.Name : "طبيب معروف",
+            AuthorProfilePictureUrl = post.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = post.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "تم تعديل المنشور بنجاح وإعادته للمراجعة معلقاً.",
@@ -324,6 +327,7 @@ public class BlogService : IBlogService
             Type = b.Type.ToString(),
             AuthorId = b.AuthorId,
             AuthorName = b.Author != null ? b.Author.Name : "طبيب غير معروف",
+            AuthorProfilePictureUrl = b.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = b.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "معلق بانتظار المراجعة",
@@ -336,6 +340,7 @@ public class BlogService : IBlogService
     {
         return await _blogRepo.GetNotificationsByRecipientIdAsync(recipientId);
     }
+
     public async Task<(object? Data, string? Error)> SearchBlogPostsServiceAsync(string searchTerm)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
@@ -363,6 +368,7 @@ public class BlogService : IBlogService
                     Title = p.Title,
                     Content = p.Content,
                     AuthorName = p.Author != null ? p.Author.Name : "كاتب مجهول",
+                    AuthorProfilePictureUrl = p.Author?.ProfilePictureUrl,
                     AuthorId = p.AuthorId,
                     Status = p.Status.ToString(),
                     p.CreatedAt
@@ -378,6 +384,7 @@ public class BlogService : IBlogService
 
         return (response, null);
     }
+
     public async Task<IEnumerable<BlogPostResponseDto>> GetPendingLabPostsAsync()
     {
         var posts = await _blogRepo.GetPendingLabPostsAsync();
@@ -390,6 +397,7 @@ public class BlogService : IBlogService
             Type = b.Type.ToString(),
             AuthorId = b.AuthorId,
             AuthorName = b.Author != null ? b.Author.Name : "مخبري غير معروف",
+            AuthorProfilePictureUrl = b.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = b.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "معلق بانتظار مراجعة الأدمن",
@@ -404,6 +412,7 @@ public class BlogService : IBlogService
             }).ToList()
         });
     }
+
     public async Task<IEnumerable<BlogPostResponseDto>> GetPendingAllPostsAsync()
     {
         var posts = await _blogRepo.GetPendingAllPostsAsync();
@@ -416,6 +425,7 @@ public class BlogService : IBlogService
             Type = b.Type.ToString(),
             AuthorId = b.AuthorId,
             AuthorName = b.Author != null ? b.Author.Name : (b.Type == BlogPostType.CommunityDiscussionDoctor ? "طبيب غير معروف" : "مخبري غير معروف"),
+            AuthorProfilePictureUrl = b.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = b.IsSensitiveRedacted,
             Status = "Pending",
             ReviewMessage = "معلق بانتظار المراجعة",
@@ -430,6 +440,7 @@ public class BlogService : IBlogService
             }).ToList()
         });
     }
+
     public async Task<IEnumerable<BlogPostResponseDto>> GetApprovedDoctorPostsAsync()
     {
         var posts = await _blogRepo.GetApprovedDoctorPostsAsync();
@@ -453,6 +464,7 @@ public class BlogService : IBlogService
             Type = b.Type.ToString(),
             AuthorId = b.AuthorId,
             AuthorName = b.Author != null ? b.Author.Name : (b.Type == BlogPostType.CommunityDiscussionDoctor ? "طبيب غير معروف" : "مخبري غير معروف"),
+            AuthorProfilePictureUrl = b.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = b.IsSensitiveRedacted,
             Status = "Approved",
             ReviewMessage = "منشور علني ومقبول",
@@ -471,6 +483,7 @@ public class BlogService : IBlogService
             Type = b.Type.ToString(),
             AuthorId = b.AuthorId,
             AuthorName = b.Author != null ? b.Author.Name : defaultAuthorName,
+            AuthorProfilePictureUrl = b.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = b.IsSensitiveRedacted,
             Status = "Approved",
             ReviewMessage = "منشور علني ومقبول",
@@ -478,6 +491,7 @@ public class BlogService : IBlogService
             Attachments = b.Attachments.Select(a => new BlogAttachmentDto { Id = a.Id, Path = a.Path, Type = a.Type.ToString(), UploadedAt = a.UploadedAt, BlogPostId = b.Id }).ToList()
         });
     }
+
     public async Task<IEnumerable<BlogPostResponseDto>> GetRejectedDoctorPostsAsync()
     {
         var posts = await _blogRepo.GetRejectedDoctorPostsAsync();
@@ -501,11 +515,10 @@ public class BlogService : IBlogService
             Type = b.Type.ToString(),
             AuthorId = b.AuthorId,
             AuthorName = b.Author != null ? b.Author.Name : (b.Type == BlogPostType.CommunityDiscussionDoctor ? "طبيب غير معروف" : "مخبري غير معروف"),
+            AuthorProfilePictureUrl = b.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = b.IsSensitiveRedacted,
             Status = "Rejected",
-
             ReviewMessage = "تم رفض المنشور من قبل إدارة المنصة لمخالفته شروط النشر.",
-
             CreatedAt = b.CreatedAt,
             Attachments = b.Attachments.Select(a => new BlogAttachmentDto
             {
@@ -517,6 +530,7 @@ public class BlogService : IBlogService
             }).ToList()
         });
     }
+
     public async Task<IEnumerable<BlogPostResponseDto>> GetPendingPostsByDoctorIdAsync(int doctorId)
     {
         var posts = await _blogRepo.GetPendingPostsByDoctorIdAsync(doctorId);
@@ -539,6 +553,7 @@ public class BlogService : IBlogService
             Type = b.Type.ToString(),
             AuthorId = b.AuthorId,
             AuthorName = b.Author != null ? b.Author.Name : "طبيب غير معروف",
+            AuthorProfilePictureUrl = b.Author?.ProfilePictureUrl,
             IsSensitiveRedacted = b.IsSensitiveRedacted,
             Status = b.Status.ToString(),
             ReviewMessage = b.Status == BlogPostStatus.Rejected
@@ -553,6 +568,7 @@ public class BlogService : IBlogService
             }).ToList()
         });
     }
+
     public async Task<bool> DeleteDoctorPostAsync(int postId)
     {
         return await _blogRepo.DeleteDoctorPostAsync(postId);

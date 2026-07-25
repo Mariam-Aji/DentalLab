@@ -1,4 +1,8 @@
-﻿using DentalLab.Api.Data;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using DentalLab.Api.Data;
+using DentalLab.Api.Dtos;
 using DentalLab.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,145 +30,206 @@ namespace DentalLab.Api.Repositories
             _context.Ratings.Update(rating);
             return await _context.SaveChangesAsync() > 0;
         }
-        public async Task<List<object>> GetLabsOrderedByRatingAsync()
-        {
-            return await _context.Labs
-                .Include(l => l.Owner)
-                .Select(lab => new
-                {
-                    lab.Id,
-                    LabName = lab.Owner.Name,
-                    Description = lab.Description,
-                    City = lab.Owner.CityPlace,
-                    AverageRating = lab.Ratings.Any(r => r.Overall > 0)
-                                    ? lab.Ratings.Where(r => r.Overall > 0).Average(r => r.Overall)
-                                    : 0
-                })
-                .OrderByDescending(l => l.AverageRating)
-                .Cast<object>()
-                .ToListAsync();
-        }
-        public async Task<List<object>> GetLabsByAddressAsync(string address)
-        {
-            return await _context.Labs
-                .Include(l => l.Owner)
-                .Where(l => l.Owner.AddressPlace == address)
-                .Select(lab => new
-                {
-                    lab.Id,
-                    LabName = lab.Owner.Name,
-                    Address = lab.Owner.AddressPlace,
-                    City = lab.Owner.CityPlace,
-                    AverageRating = lab.AverageRating,
-                    Availability = lab.Availability.ToString()
-                })
-                .Cast<object>()
-                .ToListAsync();
-        }
+
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             return await _context.Users.FindAsync(userId);
         }
-        public async Task<object?> GetLabFullDetailsAsync(int labId)
+
+        private async Task<List<int>> GetConnectedLabIdsAsync(int? currentUserId)
         {
-            return await _context.Labs
-                .Include(l => l.Owner)
-                .Include(l => l.Prices)
-                .Include(l => l.Gallery)
-                .Where(l => l.Id == labId)
+            if (!currentUserId.HasValue) return new List<int>();
+
+            return await _context.ConnectionRequests
+                .AsNoTracking()
+                .Where(cr => cr.FromDentistId == currentUserId.Value && cr.Status == ConnectionRequestStatus.Accepted)
+                .Select(cr => cr.ToLabId)
+                .ToListAsync();
+        }
+
+        public async Task<List<object>> GetLabsOrderedByRatingAsync(int? currentUserId = null)
+        {
+            var connectedLabIds = await GetConnectedLabIdsAsync(currentUserId);
+
+            var result = await _context.Labs
+                .AsNoTracking()
                 .Select(lab => new
                 {
                     lab.Id,
-                    LabName = lab.Owner.Name,
-                    Description = lab.Description,
-                    YearsOfExperience = lab.YearsOfExperience,
-
-
-                    Availability = lab.Availability.ToString(),
-
-
-
-                    Materials = lab.Materials,
-                    Specialties = lab.Specialties,
-                    AverageRating = lab.AverageRating,
-
-                    Prices = lab.Prices.Select(p => new
-                    {
-                        Type = p.CompensationType.ToString(),
-                        Price = p.UnitPrice,
-                        Notes = p.Notes
-                    }).ToList(),
-
-                    GalleryImages = lab.Gallery.Select(img => new
-                    {
-                        Url = img.Path,
-                        Name = img.Path
-                    }).ToList()
+                    LabName = lab.Owner.NamePlace ?? lab.Owner.Name,
+                    lab.Description,
+                    Address = lab.Owner.AddressPlace,
+                    City = lab.Owner.CityPlace,
+                    Country = lab.Owner.CountryPlace,
+                    Phone = lab.Owner.Phone,
+                    lab.Owner.ProfilePictureUrl,
+                    IsConnected = currentUserId.HasValue && connectedLabIds.Contains(lab.Id),
+                    AverageRating = lab.Ratings.Any(r => r.Overall > 0)
+                                    ? lab.Ratings.Where(r => r.Overall > 0).Average(r => r.Overall)
+                                    : lab.AverageRating,
+                    RatingsCount = lab.Ratings.Count
                 })
-                .FirstOrDefaultAsync();
+                .OrderByDescending(l => l.AverageRating)
+                .ToListAsync();
+
+            return result.Cast<object>().ToList();
         }
-        public async Task<List<object>> GetLabsByScanVisitServiceAsync()
+
+        public async Task<List<object>> GetLabsByAddressAsync(string address, int? currentUserId = null)
         {
-            return await _context.Labs
-                .Include(l => l.Owner)
+            var connectedLabIds = await GetConnectedLabIdsAsync(currentUserId);
+
+            var result = await _context.Labs
+                .AsNoTracking()
+                .Where(l => l.Owner.AddressPlace == address)
+                .Select(lab => new
+                {
+                    lab.Id,
+                    LabName = lab.Owner.NamePlace ?? lab.Owner.Name,
+                    Address = lab.Owner.AddressPlace,
+                    City = lab.Owner.CityPlace,
+                    Country = lab.Owner.CountryPlace,
+                    Phone = lab.Owner.Phone,
+                    lab.Owner.ProfilePictureUrl,
+                    IsConnected = currentUserId.HasValue && connectedLabIds.Contains(lab.Id),
+                    AverageRating = lab.Ratings.Any(r => r.Overall > 0)
+                                    ? lab.Ratings.Where(r => r.Overall > 0).Average(r => r.Overall)
+                                    : lab.AverageRating,
+                    RatingsCount = lab.Ratings.Count,
+                    Availability = lab.Availability.ToString()
+                })
+                .ToListAsync();
+
+            return result.Cast<object>().ToList();
+        }
+
+        public async Task<List<object>> GetLabsByScanVisitServiceAsync(int? currentUserId = null)
+        {
+            var connectedLabIds = await GetConnectedLabIdsAsync(currentUserId);
+
+            var result = await _context.Labs
+                .AsNoTracking()
                 .Where(l => l.HasScanVisitService == true)
                 .Select(lab => new
                 {
                     lab.Id,
-                    LabName = lab.Owner.Name,
-                    AverageRating = lab.AverageRating,
-                    HasScanVisitService = lab.HasScanVisitService,
-                    City = lab.Owner.CityPlace
+                    LabName = lab.Owner.NamePlace ?? lab.Owner.Name,
+                    Address = lab.Owner.AddressPlace,
+                    City = lab.Owner.CityPlace,
+                    Country = lab.Owner.CountryPlace,
+                    Phone = lab.Owner.Phone,
+                    lab.Owner.ProfilePictureUrl,
+                    IsConnected = currentUserId.HasValue && connectedLabIds.Contains(lab.Id),
+                    AverageRating = lab.Ratings.Any(r => r.Overall > 0)
+                                    ? lab.Ratings.Where(r => r.Overall > 0).Average(r => r.Overall)
+                                    : lab.AverageRating,
+                    RatingsCount = lab.Ratings.Count,
+                    lab.HasScanVisitService
                 })
                 .OrderByDescending(l => l.AverageRating)
-                .Cast<object>()
                 .ToListAsync();
+
+            return result.Cast<object>().ToList();
         }
 
+        public async Task<List<object>> GetAvailableLabsAsync(int? currentUserId = null)
+        {
+            var connectedLabIds = await GetConnectedLabIdsAsync(currentUserId);
+
+            var result = await _context.Labs
+                .AsNoTracking()
+                .Where(l => l.Availability == AvailabilityStatus.Available)
+                .Select(lab => new
+                {
+                    lab.Id,
+                    LabName = lab.Owner.NamePlace ?? lab.Owner.Name,
+                    lab.Description,
+                    Address = lab.Owner.AddressPlace,
+                    City = lab.Owner.CityPlace,
+                    Country = lab.Owner.CountryPlace,
+                    Phone = lab.Owner.Phone,
+                    lab.Owner.ProfilePictureUrl,
+                    IsConnected = currentUserId.HasValue && connectedLabIds.Contains(lab.Id),
+                    AverageRating = lab.Ratings.Any(r => r.Overall > 0)
+                                    ? lab.Ratings.Where(r => r.Overall > 0).Average(r => r.Overall)
+                                    : lab.AverageRating,
+                    RatingsCount = lab.Ratings.Count,
+                    lab.HasScanVisitService,
+                    Availability = lab.Availability.ToString()
+                })
+                .OrderByDescending(l => l.AverageRating)
+                .ToListAsync();
+
+            return result.Cast<object>().ToList();
+        }
 
         public async Task<object?> GetLabFullDetailsAsync(int labId, int? currentUserId = null)
         {
             string connectionStatus = "NotConnected";
+            bool isConnected = false;
 
             if (currentUserId.HasValue)
             {
                 var connectionRequest = await _context.ConnectionRequests
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(cr => cr.FromDentistId == currentUserId.Value && cr.ToLabId == labId);
+                    .Where(cr => cr.FromDentistId == currentUserId.Value && cr.ToLabId == labId)
+                    .OrderByDescending(cr => cr.CreatedAt)
+                    .FirstOrDefaultAsync();
 
                 if (connectionRequest != null)
                 {
-                    connectionStatus = connectionRequest.Status.ToString(); 
+                    connectionStatus = connectionRequest.Status.ToString();
+                    isConnected = connectionRequest.Status == ConnectionRequestStatus.Accepted;
                 }
             }
 
             return await _context.Labs
-                .Include(l => l.Owner)
-                .Include(l => l.Prices)
-                .Include(l => l.Gallery)
+                .AsNoTracking()
                 .Where(l => l.Id == labId)
                 .Select(lab => new
                 {
                     lab.Id,
-                    LabName = lab.Owner.Name,
-                    Description = lab.Description,
-                    YearsOfExperience = lab.YearsOfExperience,
+                    LabName = lab.Owner.NamePlace ?? lab.Owner.Name,
+                    lab.Description,
+                    lab.YearsOfExperience,
                     Availability = lab.Availability.ToString(),
+                    Address = lab.Owner.AddressPlace,
+                    City = lab.Owner.CityPlace,
+                    Country = lab.Owner.CountryPlace,
+                    Phone = lab.Owner.Phone,
+                    lab.Owner.ProfilePictureUrl,
+                    lab.HasScanVisitService,
 
-                    ProfilePictureUrl = lab.Owner.ProfilePictureUrl,
-
-                    HasScanVisitService = lab.HasScanVisitService,
                     ConnectionStatus = connectionStatus,
+                    IsConnected = isConnected,
 
-                    Materials = lab.Materials,
-                    Specialties = lab.Specialties,
-                    AverageRating = lab.AverageRating,
+                    lab.Materials,
+                    lab.Specialties,
+
+                    RatingSummary = new
+                    {
+                        AverageOverall = lab.Ratings.Any() ? lab.Ratings.Average(r => r.Overall) : lab.AverageRating,
+                        AverageQuality = lab.Ratings.Any() ? lab.Ratings.Average(r => r.Quality) : 0,
+                        AverageTimeCommitment = lab.Ratings.Any() ? lab.Ratings.Average(r => r.TimeCommitment) : 0,
+                        TotalReviews = lab.Ratings.Count
+                    },
+                    Reviews = lab.Ratings.Select(r => new
+                    {
+                        r.Id,
+                        ReviewerName = r.Reviewer != null ? r.Reviewer.Name : "Unknown",
+                        ReviewerPicture = r.Reviewer != null ? r.Reviewer.ProfilePictureUrl : null,
+                        r.Overall,
+                        r.Quality,
+                        r.TimeCommitment,
+                        r.Comment,
+                        r.CreatedAt
+                    }).OrderByDescending(r => r.CreatedAt).ToList(),
 
                     Prices = lab.Prices.Select(p => new
                     {
                         Type = p.CompensationType.ToString(),
                         Price = p.UnitPrice,
-                        Notes = p.Notes
+                        p.Notes
                     }).ToList(),
 
                     GalleryImages = lab.Gallery.Select(img => new
@@ -175,28 +240,29 @@ namespace DentalLab.Api.Repositories
                 })
                 .FirstOrDefaultAsync();
         }
-        public async Task<List<object>> GetAvailableLabsAsync()
+
+
+        public async Task<List<LabRatingChartDto>> GetLabsRatingChartDataAsync()
         {
             return await _context.Labs
-                .Include(l => l.Owner)
-                .Where(l => l.Availability == AvailabilityStatus.Available) 
-                .Select(lab => new
+                .AsNoTracking()
+                .Select(lab => new LabRatingChartDto
                 {
-                    lab.Id,
-                    LabName = lab.Owner.Name,
-                    Description = lab.Description,
-                    City = lab.Owner.CityPlace,
-                    Address = lab.Owner.AddressPlace,
-
-                    ProfilePictureUrl = lab.Owner.ProfilePictureUrl,
-
-                    AverageRating = lab.AverageRating,
-                    HasScanVisitService = lab.HasScanVisitService,
-                    Availability = lab.Availability.ToString()
+                    LabId = lab.Id,
+                    LabName = lab.Owner.NamePlace ?? lab.Owner.Name,
+                    AverageOverallRating = lab.Ratings.Any(r => r.Overall > 0)
+                                           ? lab.Ratings.Where(r => r.Overall > 0).Average(r => (double)r.Overall)
+                                           : lab.AverageRating,
+                    AverageQualityRating = lab.Ratings.Any(r => r.Quality > 0)
+                                           ? lab.Ratings.Where(r => r.Quality > 0).Average(r => (double)r.Quality)
+                                           : 0,
+                    AverageTimeCommitmentRating = lab.Ratings.Any(r => r.TimeCommitment > 0)
+                                                  ? lab.Ratings.Where(r => r.TimeCommitment > 0).Average(r => (double)r.TimeCommitment)
+                                                  : 0,
+                    TotalReviews = lab.Ratings.Count
                 })
-                .OrderByDescending(l => l.AverageRating) 
-                .Cast<object>()
+                .OrderByDescending(l => l.AverageOverallRating) // ترتبيها تنازلياً حسب الأعلى تقييماً للمخطط البياني
                 .ToListAsync();
         }
-
-    } }
+    }
+}

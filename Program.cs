@@ -123,6 +123,10 @@ builder.Services.AddScoped<ILabPaymentRepository, LabPaymentRepository>();
 builder.Services.AddHttpClient<GatewayPaymentService>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddHttpClient<IMyFatoorahService, MyFatoorahService>();
+builder.Services.AddScoped<ISearchRepository, SearchRepository>();
+builder.Services.AddScoped<ISearchService, SearchService>();
+builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
+builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });

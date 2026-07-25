@@ -235,7 +235,7 @@ namespace DentalLab.Api.Controllers
         }
         // 1️⃣ تابع عرض منشورات الأطباء المقبولة (الترتيب: الأحدث أولاً)
         [HttpGet("approved-doctor-posts")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> GetApprovedDoctorPosts()
         {
             try
@@ -281,7 +281,7 @@ namespace DentalLab.Api.Controllers
 
         // 3️⃣ تابع عرض منشورات الأطباء والمخابر معاً (الترتيب: الأحدث أولاً للكل)
         [HttpGet("approved-all-posts")]
-        [Authorize(Roles = "Admin,Dentist")]
+        //[Authorize(Roles = "Admin")]
 
         public async Task<IActionResult> GetApprovedAllPosts()
         {

@@ -16,10 +16,12 @@ namespace DentalLab.Api.Controllers;
 public class AdvertisementController : ControllerBase
 {
     private readonly IAdvertisementService _advService;
+    private readonly IMyFatoorahService _myFatoorahService; 
 
-    public AdvertisementController(IAdvertisementService advService)
+    public AdvertisementController(IAdvertisementService advService, IMyFatoorahService myFatoorahService)
     {
         _advService = advService;
+        _myFatoorahService = myFatoorahService;
     }
 
     [HttpPost("admin/create-ads-client")]
@@ -336,14 +338,16 @@ public class AdvertisementController : ControllerBase
 
             return Ok(new
             {
-                message = $"تم قبول الإعلان مبدئياً وإرسال طلب دفع بمبلغ {price} إلى الطبيب بنجاح. يبقى الإعلان معلقاً حتى إتمام الدفع.",
+                message = $"تم قبول الإعلان مبدئياً وتحديد السعر بمبلغ {price} وإرسال طلب دفع للطبيب بنجاح. يبقى الإعلان معلقاً حتى إتمام الدفع.",
                 advertisement = new
                 {
                     advertisement.Id,
                     advertisement.Title,
                     advertisement.Content,
                     advertisement.UserId,
+                    advertisement.Price,
                     advertisement.IsActive,
+                    advertisement.IsPaid,
                     advertisement.CreatedAt,
                     advertisement.ExpiresAt,
                     Images = responseImages
@@ -441,6 +445,64 @@ public class AdvertisementController : ControllerBase
                 error = ex.Message
             });
         }
+
+    }
+    [HttpPost("pay-advertisement/{adId}")]
+    [Authorize] 
+    public async Task<IActionResult> PayAdvertisement(int adId, [FromQuery] string currency = "USD")
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "فشل التحقق من الهوية الشخصية للمستخدم." });
+            }
+
+            var result = await _myFatoorahService.ProcessAdPaymentAsync(adId, userId, currency);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { message = result.Error });
+            }
+
+            return Ok(new
+            {
+                paymentLink = result.PaymentUrl,
+                message = "تم إنشاء رابط دفع الإعلان بنجاح."
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "حدث خطأ غير متوقع أثناء معالجة دفع الإعلان.", detail = ex.Message });
+        }
+    }
+    [HttpGet("active-paid/dentists")]
+    public async Task<IActionResult> GetPaidAndActiveAdvertisementsForDentists()
+    {
+        var ads = await _advService.GetPaidAndActiveAdvertisementsForDentistsAsync();
+
+        var result = ads.Select(advertisement => new
+        {
+            advertisement.Id,
+            advertisement.Title,
+            advertisement.Content,
+            advertisement.Target,
+            advertisement.Price,
+            advertisement.CreatedAt,
+            advertisement.ExpiresAt,
+            Images = !string.IsNullOrEmpty(advertisement.ImageUrl)
+                ? advertisement.ImageUrl.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList()
+                : new List<string>()
+        }).ToList();
+
+        return Ok(new
+        {
+            count = result.Count,
+            data = result
+        });
     }
 
 }

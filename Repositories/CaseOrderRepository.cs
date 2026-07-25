@@ -361,7 +361,58 @@ public class CaseOrderRepository : ICaseOrderRepository
     {
         return await _context.Users.FindAsync(userId);
     }
+    public async Task<List<CompensationDemandChartDto>> GetCompensationDemandChartDataAsync()
+    {
+        // جلب العناصر وتجميعها في الذاكرة أو عبر LINQ to Entities
+        var items = await _context.CaseOrderItems
+            .AsNoTracking()
+            .Select(item => new
+            {
+                Type = item.CompensationType,
+                TeethCount = item.ToothNumbers != null ? item.ToothNumbers.Count : 0
+            })
+            .ToListAsync();
 
-    
+        // تجميع النتائج بناءً على نوع التعويض
+        var result = items
+            .GroupBy(x => x.Type)
+            .Select(g => new CompensationDemandChartDto
+            {
+                CompensationType = g.Key.ToString(), // تحويل الـ Enum إلى نص لسهولة عرضه في الرسوم البيانية
+                RequestCount = g.Count(),            // عدد مرات إدراج هذا التعويض في الطلبات
+                TotalTeethCount = g.Sum(x => x.TeethCount) // إجمالي عدد الأسنان المدخلة له
+            })
+            .OrderByDescending(x => x.RequestCount) // ترتيبها تنازلياً (الأكثر طلباً في البداية)
+            .ToList();
+
+        return result;
+    }
+    public async Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync()
+    {
+        // 1. جلب التجمعات الفعلية من قاعدة البيانات
+        var dbCounts = await _context.CaseOrders
+            .AsNoTracking()
+            .GroupBy(o => o.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        // 2. المرور على جميع قيم الـ Enum لضمان عدم سقوط أي حالة رصيدها صفر
+        var allStatuses = Enum.GetValues<CaseStatus>();
+        var result = new List<CaseStatusCountChartDto>();
+
+        foreach (var status in allStatuses)
+        {
+            var match = dbCounts.FirstOrDefault(x => x.Status == status);
+            result.Add(new CaseStatusCountChartDto
+            {
+                StatusName = status.ToString(),
+                Status = status,
+                OrderCount = match?.Count ?? 0
+            });
+        }
+
+        return result;
+    }
+
 }
     

@@ -4,6 +4,7 @@ using DentalLab.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalLab.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724211648_AddMyFatoorahFieldsToLab")]
+    partial class AddMyFatoorahFieldsToLab
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,9 +47,6 @@ namespace DentalLab.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsPaid")
                         .HasColumnType("bit");
 
                     b.Property<decimal?>("Price")
@@ -153,6 +153,9 @@ namespace DentalLab.Api.Migrations
                     b.Property<bool>("IsUrgent")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("LabId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
@@ -179,6 +182,8 @@ namespace DentalLab.Api.Migrations
                     b.HasIndex("AssignedLabId");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("LabId");
 
                     b.HasIndex("PatientId");
 
@@ -852,7 +857,7 @@ namespace DentalLab.Api.Migrations
             modelBuilder.Entity("DentalLab.Api.Models.CaseOrder", b =>
                 {
                     b.HasOne("DentalLab.Api.Models.Lab", "AssignedLab")
-                        .WithMany("AssignedCases")
+                        .WithMany("CaseOrders")
                         .HasForeignKey("AssignedLabId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -861,6 +866,10 @@ namespace DentalLab.Api.Migrations
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("DentalLab.Api.Models.Lab", null)
+                        .WithMany("AssignedCases")
+                        .HasForeignKey("LabId");
 
                     b.HasOne("DentalLab.Api.Models.Patient", "Patient")
                         .WithMany("CaseOrders")
@@ -1106,6 +1115,8 @@ namespace DentalLab.Api.Migrations
             modelBuilder.Entity("DentalLab.Api.Models.Lab", b =>
                 {
                     b.Navigation("AssignedCases");
+
+                    b.Navigation("CaseOrders");
 
                     b.Navigation("ConnectionRequests");
 

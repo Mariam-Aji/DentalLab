@@ -37,7 +37,7 @@ public class UserService : IUserService
         var categorizedData = users
             .GroupBy(u => u.Role.ToString())
             .ToDictionary(
-                group => group.Key, 
+                group => group.Key,
                 group => group.Select(u => new
                 {
                     u.Id,
@@ -54,7 +54,7 @@ public class UserService : IUserService
         {
             TotalResults = users.Count,
             SearchQuery = searchTerm,
-            CategorizedResults = categorizedData 
+            CategorizedResults = categorizedData
         };
 
         return (response, null);
@@ -141,5 +141,8 @@ public class UserService : IUserService
 
         return (relativePath, null);
     }
-
+    public async Task<bool> ChangeUserStatusAsync(int userId, AccountStatus newStatus)
+    {
+        return await _userRepo.ChangeUserStatusAsync(userId, newStatus);
+    }
 }

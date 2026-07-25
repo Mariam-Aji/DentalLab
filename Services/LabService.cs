@@ -1,4 +1,8 @@
-﻿using DentalLab.Api.Dtos;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using DentalLab.Api.Dtos;
 using DentalLab.Api.Models;
 using DentalLab.Api.Repositories;
 
@@ -13,32 +17,90 @@ namespace DentalLab.Api.Services
             _labRepository = labRepository;
         }
 
-        public async Task<IEnumerable<LabDto>> GetLabsSummaryAsync()
+        public async Task<IEnumerable<LabDto>> GetLabsSummaryAsync(int? currentDentistId = null)
         {
             var labs = await _labRepository.GetAllLabsWithOwnersAsync();
-            return MapToSummaryDto(labs);
+            return await MapToDtoListAsync(labs, currentDentistId);
         }
 
-        public async Task<IEnumerable<LabDto>> GetConnectedLabsAsync()
+        public async Task<IEnumerable<LabDto>> GetConnectedLabsAsync(int? currentDentistId = null)
         {
-            var labs = await _labRepository.GetLabsByAvailabilityAsync(AvailabilityStatus.Available);
-            return MapToSummaryDto(labs);
+            if (!currentDentistId.HasValue)
+            {
+                return Enumerable.Empty<LabDto>();
+            }
+
+            var connectedLabs = await _labRepository.GetConnectedLabsForDentistAsync(currentDentistId.Value);
+
+            return connectedLabs.Select(l => CalculateLabDto(l, true)).ToList();
         }
 
-        public async Task<IEnumerable<LabDto>> GetDisconnectedLabsAsync()
+        public async Task<IEnumerable<LabDto>> GetDisconnectedLabsAsync(int? currentDentistId = null)
         {
             var allLabs = await _labRepository.GetAllLabsWithOwnersAsync();
-            var disconnected = allLabs.Where(l => l.Availability != AvailabilityStatus.Available);
-            return MapToSummaryDto(disconnected);
+
+            if (!currentDentistId.HasValue)
+            {
+                return await MapToDtoListAsync(allLabs, null);
+            }
+
+            var connectedLabIds = await _labRepository.GetConnectedLabIdsForDentistAsync(currentDentistId.Value);
+            var disconnectedLabs = allLabs.Where(l => !connectedLabIds.Contains(l.Id));
+
+            return await MapToDtoListAsync(disconnectedLabs, currentDentistId);
         }
 
-        private IEnumerable<LabDto> MapToSummaryDto(IEnumerable<Lab> labs)
+        private async Task<IEnumerable<LabDto>> MapToDtoListAsync(IEnumerable<Lab> labs, int? currentDentistId)
         {
-            return labs.Select(l => new LabDto
+            List<int> connectedLabIds = new();
+
+            if (currentDentistId.HasValue)
             {
-                Id = l.Id,
-                Name = l.Owner != null ? l.Owner.NamePlace : "Unknown Lab Name"
-            }).ToList();
+                connectedLabIds = await _labRepository.GetConnectedLabIdsForDentistAsync(currentDentistId.Value);
+            }
+
+            return labs.Select(l => CalculateLabDto(l, currentDentistId.HasValue && connectedLabIds.Contains(l.Id))).ToList();
+        }
+
+        // تابع مساعد حاسم وموحّد لحساب التقييمات وبناء الـ DTO لمنع التكرار والأخطاء
+        private static LabDto CalculateLabDto(Lab lab, bool isConnected)
+        {
+            double average = 0.0;
+            int count = 0;
+
+            if (lab.Ratings != null && lab.Ratings.Any())
+            {
+                var validRatings = lab.Ratings.Where(r => r.Overall > 0).ToList();
+                count = lab.Ratings.Count;
+
+                if (validRatings.Any())
+                {
+                    average = validRatings.Average(r => r.Overall);
+                }
+            }
+
+            // إذا لم تتوفر تقييمات ديناميكية في الجدول المربوط، نأخذ الحقل الثابت إذا كان يحتوي قيمة
+            if (average == 0.0 && lab.AverageRating > 0)
+            {
+                average = lab.AverageRating;
+            }
+
+            return new LabDto
+            {
+                Id = lab.Id,
+                Name = lab.Owner != null ? (lab.Owner.NamePlace ?? lab.Owner.Name) : "Unknown Lab Name",
+                ProfilePictureUrl = lab.Owner?.ProfilePictureUrl,
+
+                // الإضافات الجديدة: رقم الهاتف وموقع المخبر من جدول الـ User
+                Phone = lab.Owner?.Phone,
+                AddressPlace = lab.Owner?.AddressPlace,
+                CityPlace = lab.Owner?.CityPlace,
+                CountryPlace = lab.Owner?.CountryPlace,
+
+                IsConnected = isConnected,
+                AverageRating = Math.Round(average, 1),
+                RatingsCount = count
+            };
         }
     }
 }

@@ -25,5 +25,6 @@ public interface IAdvertisementRepository
     Task<List<User>> SearchLabsByNameAsync(string labName);
     Task<(List<Advertisement> Advertisements, int Count)> GetValidAdvertisementsByUserIdAsync(int userId);
     Task<List<Advertisement>> SearchAdvertisementsAsync(string searchTerm);
+    Task<List<Advertisement>> GetPaidAndActiveAdvertisementsForDentistsAsync();
 
 }

@@ -18,5 +18,7 @@ namespace DentalLab.Api.Dtos
         public string? ReviewMessage { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<BlogAttachmentDto> Attachments { get; set; } = new();
+        public string? AuthorProfilePictureUrl { get; set; }
+
     }
 }

@@ -43,7 +43,11 @@ public class ApplicationDbContext : DbContext
         .WithMany(invoice => invoice.InvoiceItems)
         .HasForeignKey(item => item.OrderInvoiceId)
         .OnDelete(DeleteBehavior.Cascade); // ?? Cascade ??? ???? ??????
-
+        modelBuilder.Entity<CaseOrder>()
+        .HasOne(c => c.AssignedLab)
+        .WithMany(l => l.AssignedCases) // ?? ?? ??????? ??? ??????? ??????? ????????
+        .HasForeignKey(c => c.AssignedLabId)
+        .OnDelete(DeleteBehavior.SetNull);
         // 3. ??? ??? ?????? ??????? (Precision) ???? ????? ??????? ??????????
         modelBuilder.Entity<OrderInvoice>()
             .Property(i => i.TotalAmount)
@@ -114,10 +118,9 @@ public class ApplicationDbContext : DbContext
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Lab>()
-            .HasMany(l => l.CaseOrders)
-            .WithOne(c => c.AssignedLab)
-            .HasForeignKey(c => c.AssignedLabId)
-            .OnDelete(DeleteBehavior.SetNull);
+    .HasMany(l => l.AssignedCases) // ????
+    .WithOne(c => c.AssignedLab)
+    .HasForeignKey(c => c.AssignedLabId);
 
         modelBuilder.Entity<Lab>()
             .HasMany(l => l.SubscriptionPayments)

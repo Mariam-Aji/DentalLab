@@ -26,5 +26,6 @@ public interface IAdvertisementService
     Task<List<object>> SearchLabsAsync(string name);
     Task<(object? Data, string? Error)> GetUserActiveAdvertisementsWithCountAsync(int userId);
     Task<(object? Data, string? Error)> SearchAdvertisementsServiceAsync(string searchTerm);
+    Task<List<Advertisement>> GetPaidAndActiveAdvertisementsForDentistsAsync();
 
 }

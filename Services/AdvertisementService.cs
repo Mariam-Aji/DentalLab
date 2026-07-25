@@ -60,6 +60,7 @@ public class AdvertisementService : IAdvertisementService
             string fixedTitle = dto.Target switch
             {
                 TargetAudience.Dentists => "إعلان موجه لأطباء الأسنان",
+              
                 TargetAudience.Labs => "إعلان موجه لمخابر الأسنان",
                 TargetAudience.Both => "إعلان عام للأطباء والمخابر",
                 _ => "إعلان جديد"
@@ -365,7 +366,6 @@ var jsonOptions = new JsonSerializerOptions
             return (null, ex.InnerException != null ? ex.InnerException.Message : ex.Message);
         }
     }
-
     public async Task<(bool isActivated, string? errorMessage)> ActivateDoctorAdvertisementAsync(int advertisementId, int userId, decimal price)
     {
         var advertisement = await _advRepo.GetByIdAsync(advertisementId);
@@ -385,9 +385,8 @@ var jsonOptions = new JsonSerializerOptions
         }
 
         advertisement.Price = price;
-
         advertisement.IsActive = false;
-        advertisement.CreatedAt = DateTime.UtcNow;
+        advertisement.IsPaid = false;
 
         var isSaved = await _advRepo.SaveChangesStatusAsync(advertisement);
         if (!isSaved)
@@ -399,7 +398,7 @@ var jsonOptions = new JsonSerializerOptions
         {
             var doctorNotification = new Notification
             {
-                RecipientId = userId, 
+                RecipientId = userId,
                 Message = $"✅ تمت الموافقة على محتوى إعلانك بعنوان: '{advertisement.Title}'. يرجى سداد مبلغ ({price}) لتفعيل الإعلان ونشره رسمياً داخل التطبيق. علمًا أن الإعلان سيبقى غير منشور حتى إتمام الدفع.",
                 Type = NotificationType.StatusChanged,
                 IsRead = false,
@@ -410,6 +409,7 @@ var jsonOptions = new JsonSerializerOptions
         }
         catch
         {
+            // تجاهل فشل إرسال الإشعار لكي لا يعطل العملية الأساسية
         }
 
         return (true, null);
@@ -535,5 +535,8 @@ var jsonOptions = new JsonSerializerOptions
 
         return (result, null);
     }
-
+    public async Task<List<Advertisement>> GetPaidAndActiveAdvertisementsForDentistsAsync()
+    {
+        return await _advRepo.GetPaidAndActiveAdvertisementsForDentistsAsync();
+    }
 }

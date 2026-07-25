@@ -828,5 +828,13 @@ namespace DentalLab.Api.Services
 
             return (updatedProfile, null);
         }
+        public async Task<List<CompensationDemandChartDto>> GetCompensationDemandChartDataAsync()
+        {
+            return await _repo.GetCompensationDemandChartDataAsync();
+        }
+        public async Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync()
+        {
+            return await _repo.GetCaseStatusChartDataAsync();
+        }
     }
 }

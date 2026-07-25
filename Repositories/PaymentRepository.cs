@@ -12,10 +12,11 @@ public class PaymentRepository : IPaymentRepository
         _context = context;
     }
 
-    public async Task<CaseOrder?> GetOrderWithUserAsync(int orderId)
+    public async Task<CaseOrder?> GetOrderWithUserAndLabAsync(int orderId)
     {
         return await _context.CaseOrders
-            .Include(o => o.CreatedBy)
+            .Include(o => o.CreatedBy)      // الطبيب الدافع
+            .Include(o => o.AssignedLab)    // المخبر المستلم
             .FirstOrDefaultAsync(o => o.Id == orderId);
     }
 
@@ -26,6 +27,23 @@ public class PaymentRepository : IPaymentRepository
 
         order.IsPaid = isPaid;
         _context.CaseOrders.Update(order);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+    public async Task<Advertisement?> GetAdvertisementWithUserAsync(int adId)
+    {
+        return await _context.Advertisements
+            .Include(a => a.User) // جلب بيانات المستخدم الناشر (طبيب، مخبر، أو عميل إعلانات)
+            .FirstOrDefaultAsync(a => a.Id == adId);
+    }
+
+    public async Task<bool> UpdateAdPaymentStatusAsync(int adId, decimal paidAmount, bool isPaid)
+    {
+        var ad = await _context.Advertisements.FindAsync(adId);
+        if (ad == null) return false;
+
+        ad.IsPaid = isPaid; // تحديث حقل الدفع في الإعلان
+        _context.Advertisements.Update(ad);
         await _context.SaveChangesAsync();
         return true;
     }

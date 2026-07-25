@@ -232,5 +232,17 @@ public class AdvertisementRepository : IAdvertisementRepository
 
         return advertisements;
     }
+    public async Task<List<Advertisement>> GetPaidAndActiveAdvertisementsForDentistsAsync()
+    {
+        var now = DateTime.UtcNow;
+        return await _context.Advertisements
+            .AsNoTracking()
+            .Where(a => a.IsPaid == true
+                        && a.IsActive == true
+                        && (a.ExpiresAt == null || a.ExpiresAt > now)
+                        && (a.Target == TargetAudience.Dentists || a.Target == TargetAudience.Both))
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync();
+    }
 
 }

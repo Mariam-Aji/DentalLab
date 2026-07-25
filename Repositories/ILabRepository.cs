@@ -1,11 +1,14 @@
-﻿using DentalLab.Api.Data;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using DentalLab.Api.Models;
-using Microsoft.EntityFrameworkCore;
 
-public interface ILabRepository
+namespace DentalLab.Api.Repositories
 {
-    Task<IEnumerable<Lab>> GetAllLabsWithOwnersAsync();
-  
-    Task<IEnumerable<Lab>> GetLabsByAvailabilityAsync(AvailabilityStatus status);
-
+    public interface ILabRepository
+    {
+        Task<IEnumerable<Lab>> GetAllLabsWithOwnersAsync();
+        Task<IEnumerable<Lab>> GetLabsByAvailabilityAsync(AvailabilityStatus status);
+        Task<List<int>> GetConnectedLabIdsForDentistAsync(int dentistId);
+        Task<IEnumerable<Lab>> GetConnectedLabsForDentistAsync(int dentistId);
+    }
 }

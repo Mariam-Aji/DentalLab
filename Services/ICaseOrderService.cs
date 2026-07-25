@@ -27,6 +27,8 @@ namespace DentalLab.Api.Services
         Task<List<object>> GetOrdersByDentistAndLabAsync(int dentistId, int labId);
         Task<DentistOwnProfileDetailsDto?> FetchDentistPersonalProfileAsync(int userId);
         Task<(DentistOwnProfileDetailsDto? Profile, string? Error)> ModifyDentistPersonalProfileAsync(int userId, EditDentistOwnProfileDto dto);
+        Task<List<CompensationDemandChartDto>> GetCompensationDemandChartDataAsync();
+        Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync();
     }
 }
 //

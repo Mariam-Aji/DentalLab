@@ -289,6 +289,30 @@ public class CaseOrdersController : ControllerBase
             Data = profile
         });
     }
+    [Authorize(Roles = "Admin")]
+    [HttpGet("compensations-chart")]
+    public async Task<IActionResult> GetCompensationsChartData()
+    {
+        var chartData = await _service.GetCompensationDemandChartDataAsync();
+
+        return Ok(new
+        {
+            count = chartData.Count,
+            data = chartData
+        });
+    }
+    [Authorize(Roles = "Admin")]
+    [HttpGet("status-chart")]
+    public async Task<IActionResult> GetCaseStatusChartData()
+    {
+        var chartData = await _service.GetCaseStatusChartDataAsync();
+
+        return Ok(new
+        {
+            count = chartData.Count,
+            data = chartData
+        });
+    }
 }
 
     

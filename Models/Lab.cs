@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DentalLab.Api.Models;
 
@@ -11,8 +12,11 @@ public class Lab
     [Key]
     public int Id { get; set; }
     public string? Description { get; set; }
+
     [Required]
     public int UserId { get; set; }
+
+    [ForeignKey("UserId")]
     public User Owner { get; set; } = null!;
 
     public int YearsOfExperience { get; set; }
@@ -22,14 +26,15 @@ public class Lab
     public bool HasScanVisitService { get; set; }
     public double AverageRating { get; set; }
 
-
-
     public DateTime? SubscriptionStartUtc { get; set; }
     public DateTime? SubscriptionEndUtc { get; set; }
     public int SubscriptionGraceDays { get; set; } = 5;
 
-    // Navigation
-    public List<CaseOrder> CaseOrders { get; set; } = new();
+    public long? MyFatoorahSupplierCode { get; set; }
+
+    
+    public List<CaseOrder> AssignedCases { get; set; } = new();
+
     public List<Rating> Ratings { get; set; } = new();
     public List<LabPrice> Prices { get; set; } = new();
     public List<ConnectionRequest> ConnectionRequests { get; set; } = new();

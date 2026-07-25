@@ -37,4 +37,5 @@ public class Advertisement
     // Navigation Property
     [ForeignKey("UserId")]
     public User User { get; set; } = null!;
+    public bool IsPaid { get; set; } = false;
 }

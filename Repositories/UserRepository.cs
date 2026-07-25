@@ -97,5 +97,18 @@ public class UserRepository : IUserRepository
         _context.Users.Update(user);
         return await _context.SaveChangesAsync() > 0;
     }
+    public async Task<bool> ChangeUserStatusAsync(int userId, AccountStatus newStatus)
+    {
+        var user = await _context.Users.FindAsync(userId);
 
+        if (user == null)
+        {
+            return false;
+        }
+
+        user.Status = newStatus;
+
+        _context.Users.Update(user);
+        return await _context.SaveChangesAsync() > 0;
+    }
 }

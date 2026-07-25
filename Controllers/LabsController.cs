@@ -1,4 +1,6 @@
-﻿using DentalLab.Api.Services;
+﻿using System.Security.Claims;
+using System.Threading.Tasks;
+using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DentalLab.Api.Controllers
@@ -17,23 +19,37 @@ namespace DentalLab.Api.Controllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAllLabs()
         {
-            var result = await _labService.GetLabsSummaryAsync();
+            int? currentDentistId = GetCurrentUserIdOrDefault();
+            var result = await _labService.GetLabsSummaryAsync(currentDentistId);
             return Ok(result);
         }
 
         [HttpGet("connected")]
         public async Task<IActionResult> GetConnectedLabs()
         {
-            var result = await _labService.GetConnectedLabsAsync();
+            int? currentDentistId = GetCurrentUserIdOrDefault();
+            var result = await _labService.GetConnectedLabsAsync(currentDentistId);
             return Ok(result);
         }
 
         [HttpGet("disconnected")]
         public async Task<IActionResult> GetDisconnectedLabs()
         {
-            var result = await _labService.GetDisconnectedLabsAsync();
+            int? currentDentistId = GetCurrentUserIdOrDefault();
+            var result = await _labService.GetDisconnectedLabsAsync(currentDentistId);
             return Ok(result);
         }
-        //
+
+        private int? GetCurrentUserIdOrDefault()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                           ?? User.FindFirst("sub")?.Value;
+
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+            return null;
+        }
     }
 }

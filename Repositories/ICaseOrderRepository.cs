@@ -38,5 +38,7 @@ public interface ICaseOrderRepository
     Task<List<object>> GetOrdersByDentistAndLabAsync(int dentistId, int labId);
     Task<User?> GetUserByIdAsync(int userId);
     Task<bool> UpdateUserAsync(User user);
+    Task<List<CompensationDemandChartDto>> GetCompensationDemandChartDataAsync();
+    Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync();
 
 }

@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
 namespace DentalLab.Api.Models;
-
+using System.ComponentModel.DataAnnotations.Schema; 
 public enum CaseStatus
 {
     Pennding,
@@ -32,6 +32,7 @@ public class CaseOrder
     public User? CreatedBy { get; set; }
 
     public int? AssignedLabId { get; set; }
+    [ForeignKey("AssignedLabId")]
     public Lab? AssignedLab { get; set; }
 
     public int? PatientId { get; set; }

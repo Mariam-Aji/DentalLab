@@ -10,5 +10,6 @@ public interface IUserRepository
     Task<List<User>> GetAllDentistsAsync();
     Task<User?> GetUserByIdAsync(int userId);
     Task<bool> UpdateUserAsync(User user);
+    Task<bool> ChangeUserStatusAsync(int userId, AccountStatus newStatus);
 
 }

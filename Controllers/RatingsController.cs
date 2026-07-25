@@ -1,7 +1,8 @@
-﻿using DentalLab.Api.Services;
+﻿using System.Security.Claims;
+using System.Threading.Tasks;
+using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace DentalLab.Api.Controllers
 {
@@ -11,22 +12,23 @@ namespace DentalLab.Api.Controllers
     {
         private readonly IRatingService _ratingService;
         public RatingsController(IRatingService ratingService) => _ratingService = ratingService;
-        [Authorize(Roles = "Dentist")]
 
+        [Authorize(Roles = "Dentist")]
         [HttpPost("{labId}/quality/{score}")]
         public async Task<IActionResult> RateQuality(int labId, int score)
         {
             var userId = GetUserId();
             return Ok(await _ratingService.ProcessQualityRating(userId, labId, score));
         }
-        [Authorize(Roles = "Dentist")]
 
+        [Authorize(Roles = "Dentist")]
         [HttpPost("{labId}/time/{score}")]
         public async Task<IActionResult> RateTime(int labId, int score)
         {
             var userId = GetUserId();
             return Ok(await _ratingService.ProcessTimeRating(userId, labId, score));
         }
+
         [Authorize(Roles = "Dentist")]
         [HttpPost("{labId}/finalize/{qualityScore}/{timeScore}")]
         public async Task<IActionResult> Finalize(int labId, int qualityScore, int timeScore)
@@ -35,36 +37,27 @@ namespace DentalLab.Api.Controllers
             return Ok(await _ratingService.CalculateAndSaveFinalRatingAsync(userId, labId, timeScore, qualityScore));
         }
 
-        private int GetUserId() => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
         [HttpGet("ordered-by-rating")]
         public async Task<IActionResult> GetOrderedLabs()
         {
-            var result = await _ratingService.GetTopRatedLabsAsync();
+            int? currentUserId = GetUserIdOrDefault();
+            var result = await _ratingService.GetTopRatedLabsAsync(currentUserId);
             return Ok(result);
         }
+
         [HttpGet("filter-by-my-location")]
         [Authorize(Roles = "Dentist")]
         public async Task<IActionResult> GetLabsInMyLocation()
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            if (userIdClaim == null) return Unauthorized();
-
-            int doctorId = int.Parse(userIdClaim.Value);
-
+            var doctorId = GetUserId();
             var result = await _ratingService.GetLabsByDoctorLocationAsync(doctorId);
-
             return Ok(result);
         }
+
         [HttpGet("lab-profile/{labId}")]
         public async Task<IActionResult> GetLabProfile(int labId)
         {
-            int? currentUserId = null;
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId))
-            {
-                currentUserId = parsedId;
-            }
-
+            int? currentUserId = GetUserIdOrDefault();
             var details = await _ratingService.GetLabProfileDetailsAsync(labId, currentUserId);
 
             if (details == null)
@@ -72,22 +65,46 @@ namespace DentalLab.Api.Controllers
 
             return Ok(details);
         }
+
         [HttpGet("with-scan-service")]
         public async Task<IActionResult> GetLabsWithScanService()
         {
-            var labs = await _ratingService.GetLabsWithScanServiceAsync();
+            int? currentUserId = GetUserIdOrDefault();
+            var labs = await _ratingService.GetLabsWithScanServiceAsync(currentUserId);
             return Ok(labs);
         }
-    
-    [HttpGet("available-labs")]
+
+        [HttpGet("available-labs")]
         public async Task<IActionResult> GetAvailableLabs()
         {
-            var labs = await _ratingService.GetAvailableLabsAsync();
+            int? currentUserId = GetUserIdOrDefault();
+            var labs = await _ratingService.GetAvailableLabsAsync(currentUserId);
             return Ok(labs);
         }
 
-    } }
+        private int GetUserId() => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
 
+        private int? GetUserIdOrDefault()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                           ?? User.FindFirst("sub")?.Value;
 
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+            return null;
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpGet("chart-data")]
+        public async Task<IActionResult> GetLabsRatingChart()
+        {
+            var chartData = await _ratingService.GetLabsRatingChartDataAsync();
 
-    
+            return Ok(new
+            {
+                count = chartData.Count,
+                data = chartData
+            });
+        } }
+    }

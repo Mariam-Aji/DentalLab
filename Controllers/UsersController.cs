@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using DentalLab.Api.Dtos;
 
 namespace DentalLab.Api.Controllers;
 
@@ -85,5 +86,23 @@ public class UsersController : ControllerBase
             Message = "تم تحديث صورة البروفايل بنجاح.",
             ProfilePictureUrl = relativePath
         });
+    }
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("{id}/status")]
+    public async Task<IActionResult> ChangeUserStatus(int id, [FromForm] ChangeUserStatusDto dto)
+    {
+        if (dto == null)
+        {
+            return BadRequest(new { message = "بيانات الطلب غير صالحة." });
+        }
+
+        var isUpdated = await _userService.ChangeUserStatusAsync(id, dto.Status);
+
+        if (!isUpdated)
+        {
+            return NotFound(new { message = $"المعالج: لم يتم العثور على المستخدم ذو المعرف {id} أو حدث خطأ أثناء التحديث." });
+        }
+
+        return Ok(new { message = "تم تحديث حالة المستخدم بنجاح.", newStatus = dto.Status.ToString() });
     }
 }
