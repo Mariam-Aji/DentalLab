@@ -80,6 +80,8 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ILabGalleryService, LabGalleryService>();
 builder.Services.AddScoped<ILabProfileService, LabProfileService>();
 builder.Services.AddScoped<ILabMyFatoorahCodeService, LabMyFatoorahCodeService>();
+builder.Services.AddScoped<ILabInvoiceService, LabInvoiceService>();
+builder.Services.AddScoped<ILabInvoiceSyncService, LabInvoiceSyncService>();
 builder.Services.AddScoped<IAdminAccountService, AdminAccountService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IFileService, FileService>();

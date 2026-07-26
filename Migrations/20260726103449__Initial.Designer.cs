@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DentalLab.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260725161228__Initial")]
+    [Migration("20260726103449__Initial")]
     partial class _Initial
     {
         /// <inheritdoc />
@@ -51,6 +51,9 @@ namespace DentalLab.Api.Migrations
 
                     b.Property<bool>("IsPaid")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<decimal?>("Price")
                         .HasColumnType("decimal(18,2)");
@@ -158,6 +161,9 @@ namespace DentalLab.Api.Migrations
 
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int?>("PatientId")
                         .HasColumnType("int");

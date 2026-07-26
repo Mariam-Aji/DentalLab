@@ -88,7 +88,8 @@ namespace DentalLab.Api.Migrations
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     Price = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    IsPaid = table.Column<bool>(type: "bit", nullable: false)
+                    IsPaid = table.Column<bool>(type: "bit", nullable: false),
+                    PaidAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -257,6 +258,7 @@ namespace DentalLab.Api.Migrations
                     EstimatedPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     FinalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     IsPaid = table.Column<bool>(type: "bit", nullable: false),
+                    PaidAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
