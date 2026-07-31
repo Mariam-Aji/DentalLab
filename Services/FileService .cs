@@ -73,5 +73,15 @@ namespace DentalLab.Api.Services
 
             return relativePath;
         }
+        public async Task<List<FileResource>> GetStlFilesByCaseAsync(int caseOrderId)
+        {
+            var caseOrder = await _context.CaseOrders.FindAsync(caseOrderId);
+            if (caseOrder == null)
+            {
+                throw new Exception("الطلبية غير موجودة.");
+            }
+
+            return await _fileRepo.GetStlFilesByCaseOrderIdAsync(caseOrderId);
+        }
     }
 }

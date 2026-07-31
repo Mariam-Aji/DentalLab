@@ -1,5 +1,6 @@
 ﻿using DentalLab.Api.Data;
 using DentalLab.Api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalLab.Api.Repositories
 {
@@ -22,5 +23,13 @@ namespace DentalLab.Api.Repositories
             await _context.SaveChangesAsync();
         }
         //
+        public async Task<List<FileResource>> GetStlFilesByCaseOrderIdAsync(int caseOrderId)
+        {
+            return await _context.FileResources
+                .AsNoTracking()
+                .Where(f => f.CaseOrderId == caseOrderId && f.Type == FileType.DigitalScan)
+                .OrderByDescending(f => f.UploadedAt)
+                .ToListAsync();
+        }
     }
 }

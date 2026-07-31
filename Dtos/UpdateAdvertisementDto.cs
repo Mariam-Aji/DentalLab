@@ -12,4 +12,6 @@ public class UpdateAdvertisementDto
     public TargetAudience? Target { get; set; } 
     public DateTime? ExpiresAt { get; set; }
     public List<IFormFile>? ImageFiles { get; set; }
+    public decimal? Price { get; set; }
+
 }

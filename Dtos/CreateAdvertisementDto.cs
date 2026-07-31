@@ -16,4 +16,5 @@ public class CreateAdvertisementDto
     public IFormFileCollection? ImageFiles { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
+    public decimal? Price { get; set; }
 }

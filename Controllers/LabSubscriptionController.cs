@@ -71,5 +71,17 @@ namespace DentalLab.Api.Controllers
 
             return Ok(new { message = result.Message });
         }
+        [HttpGet("expired-subscribed-labs")]
+        public async Task<IActionResult> GetExpiredLabs()
+        {
+            var expiredLabs = await _subscriptionService.GetExpiredLabsAsync();
+
+            if (expiredLabs == null || !expiredLabs.Any())
+            {
+                return Ok(new { message = "لا يوجد أي مخابر منتهية الاشتراك في الوقت الحالي." });
+            }
+
+            return Ok(expiredLabs);
+        }
     }
 }

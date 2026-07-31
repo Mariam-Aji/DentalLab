@@ -82,13 +82,15 @@ public class AdvertisementController : ControllerBase
 
             return Ok(new
             {
-                message = "تم إضافة الإعلان ورفع كافة الصور بنجاح.",
+                message = "تم إضافة الإعلان وتحديد السعر ورفع كافة الصور بنجاح.",
                 advertisement = new
                 {
                     advertisement.Id,
                     advertisement.Title,
                     advertisement.Content,
                     advertisement.UserId,
+                    advertisement.Price,       // <-- عرض السعر في الاستجابة
+                    advertisement.IsPaid,      // <-- عرض حالة الدفع
                     advertisement.IsActive,
                     advertisement.CreatedAt,
                     advertisement.ExpiresAt,

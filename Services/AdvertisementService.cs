@@ -60,7 +60,6 @@ public class AdvertisementService : IAdvertisementService
             string fixedTitle = dto.Target switch
             {
                 TargetAudience.Dentists => "إعلان موجه لأطباء الأسنان",
-              
                 TargetAudience.Labs => "إعلان موجه لمخابر الأسنان",
                 TargetAudience.Both => "إعلان عام للأطباء والمخابر",
                 _ => "إعلان جديد"
@@ -106,7 +105,9 @@ public class AdvertisementService : IAdvertisementService
                 ImageUrl = finalImagesString,
                 ExpiresAt = dto.ExpiresAt,
                 UserId = userId,
+                Price = dto.Price,
                 IsActive = true,
+                IsPaid = dto.Price.HasValue && dto.Price.Value > 0 ? false : true, // إذا وُضع سعر، قد ترغب بأن يكون معلقاً حتى يدفع، أو افتراضياً حسب نظامك
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -140,6 +141,7 @@ public class AdvertisementService : IAdvertisementService
                     TargetAudience.Both => "إعلان عام للأطباء والمخابر",
                     _ => adv.Title
                 };
+                adv.Target = dto.Target.Value; // تأكد من تحديث الـ Target أيضاً
             }
             else if (!string.IsNullOrEmpty(dto.Title))
             {
@@ -154,6 +156,12 @@ public class AdvertisementService : IAdvertisementService
             if (dto.ExpiresAt.HasValue)
             {
                 adv.ExpiresAt = dto.ExpiresAt.Value;
+            }
+
+            // <-- التعديل المضاف: تحديث السعر إذا تم إرساله في الـ DTO
+            if (dto.Price.HasValue)
+            {
+                adv.Price = dto.Price.Value;
             }
 
             if (dto.ImageFiles != null && dto.ImageFiles.Count > 0)

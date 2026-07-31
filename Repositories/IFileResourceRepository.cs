@@ -7,5 +7,6 @@ namespace DentalLab.Api.Repositories
         Task AddAsync(FileResource file);
         Task SaveChangesAsync();
         //
+        Task<List<FileResource>> GetStlFilesByCaseOrderIdAsync(int caseOrderId);
     }
 }

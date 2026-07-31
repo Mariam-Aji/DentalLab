@@ -45,17 +45,17 @@ namespace DentalLab.Api.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Lab>> GetExpiredLabsAsync()
-        {
-            var now = DateTime.UtcNow;
+        //public async Task<IEnumerable<Lab>> GetExpiredLabsAsync()
+        //{
+        //    var now = DateTime.UtcNow;
 
-            return await _context.Labs
-                .Include(l => l.Owner)
-                .Where(l => l.Owner.Status == AccountStatus.Active &&
-                           l.SubscriptionEndUtc != null &&
-                           l.SubscriptionEndUtc <= now)
-                .ToListAsync();
-        }
+        //    return await _context.Labs
+        //        .Include(l => l.Owner)
+        //        .Where(l => l.Owner.Status == AccountStatus.Active &&
+        //                   l.SubscriptionEndUtc != null &&
+        //                   l.SubscriptionEndUtc <= now)
+        //        .ToListAsync();
+        //}
 
         // 🌟 تحديث مجموعة المخابر وتحويل حساب المستخدم المرتبط بها إلى Suspended تلقائياً
         public async Task UpdateLabsRangeAsync(IEnumerable<Lab> labs)
@@ -88,4 +88,16 @@ namespace DentalLab.Api.Repositories
             _context.LabSubscriptionPayments.Update(payment);
             await _context.SaveChangesAsync();
         }
+        public async Task<IEnumerable<Lab>> GetExpiredLabsAsync()
+        {
+            var now = DateTime.UtcNow;
+
+            return await _context.Labs
+                .Include(l => l.Owner)
+                .Include(l => l.SubscriptionPayments)
+                .Where(l => l.SubscriptionPayments.Any() &&
+                            l.SubscriptionPayments.Max(p => (DateTime?)p.PeriodEndUtc) <= now)
+                .ToListAsync();
+        }
+
     } }

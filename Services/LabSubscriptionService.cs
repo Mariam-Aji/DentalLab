@@ -182,5 +182,28 @@ namespace DentalLab.Api.Services
 
             return (true, "تم تجديد الاشتراك وشحن الحساب بنجاح، وإعادة تفعيل صلاحيات المخبر.");
         }
+        public async Task<IEnumerable<ActiveLabDto>> GetExpiredLabsAsync()
+        {
+            var expiredLabs = await _subscriptionRepository.GetExpiredLabsAsync();
+            var now = DateTime.UtcNow;
+
+            return expiredLabs.Select(l =>
+            {
+                // جلب أحدث دفعة اشتراك لهذا المخبر إن وجدت
+                var latestPayment = l.SubscriptionPayments?
+                    .OrderByDescending(p => p.PaidAtUtc)
+                    .FirstOrDefault();
+
+                return new ActiveLabDto
+                {
+                    LabId = l.Id,
+                    LabName = l.Owner?.Name ?? "مخبر غير مسمى",
+                    Email = l.Owner?.Email ?? string.Empty,
+                    SubscriptionStartUtc = latestPayment?.PeriodStartUtc ?? l.SubscriptionStartUtc,
+                    SubscriptionEndUtc = latestPayment?.PeriodEndUtc ?? l.SubscriptionEndUtc ?? now,
+                    RemainingDays = latestPayment != null ? (latestPayment.PeriodEndUtc - now).Days : (l.SubscriptionEndUtc.HasValue ? (l.SubscriptionEndUtc.Value - now).Days : 0)
+                };
+            });
+        }
     }
 }

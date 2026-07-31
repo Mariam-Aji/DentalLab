@@ -20,7 +20,7 @@ public class PaymentController : ControllerBase
 
   
     [HttpPost("pay-order/{caseOrderId}")]
-    [Authorize(Roles = "Dentist")]
+    [Authorize(Roles = "Dentist,Lab")]
     public async Task<IActionResult> PayOrder(int caseOrderId, [FromQuery] string currency = "USD")
     {
         try
