@@ -104,6 +104,16 @@ public class LabBlogRepository : ILabBlogRepository
         return await query.OrderByDescending(b => b.CreatedAt).ToListAsync();
     }
 
+    public async Task<List<BlogPost>> GetAllApprovedPostsAsync()
+    {
+        return await _context.BlogPosts
+            .Include(b => b.Author)
+            .Include(b => b.Attachments)
+            .Where(b => b.Status == BlogPostStatus.Approved)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<List<BlogPost>> SearchBlogPostsAsync(string searchTerm)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
@@ -118,7 +128,9 @@ public class LabBlogRepository : ILabBlogRepository
 
         var query = _context.BlogPosts
             .Include(b => b.Author)
-            .AsNoTracking();
+            .Include(b => b.Attachments)
+            .AsNoTracking()
+            .Where(b => b.Status == BlogPostStatus.Approved);
 
         var parameter = Expression.Parameter(typeof(BlogPost), "b");
         Expression? finalExpression = null;

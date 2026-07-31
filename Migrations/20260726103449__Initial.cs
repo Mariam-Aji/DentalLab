@@ -65,7 +65,8 @@ namespace DentalLab.Api.Migrations
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     VerificationDocumentPath = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     EmailVerifiedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ProfilePictureUrl = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -86,7 +87,9 @@ namespace DentalLab.Api.Migrations
                     ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
-                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
+                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    IsPaid = table.Column<bool>(type: "bit", nullable: false),
+                    PaidAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -163,7 +166,8 @@ namespace DentalLab.Api.Migrations
                     AverageRating = table.Column<double>(type: "float", nullable: false),
                     SubscriptionStartUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     SubscriptionEndUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    SubscriptionGraceDays = table.Column<int>(type: "int", nullable: false)
+                    SubscriptionGraceDays = table.Column<int>(type: "int", nullable: false),
+                    MyFatoorahSupplierCode = table.Column<long>(type: "bigint", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -254,6 +258,7 @@ namespace DentalLab.Api.Migrations
                     EstimatedPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     FinalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     IsPaid = table.Column<bool>(type: "bit", nullable: false),
+                    PaidAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>

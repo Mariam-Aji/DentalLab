@@ -65,7 +65,7 @@ public class UsersController : ControllerBase
 
     }
     [HttpPost("upload-profile-picture")]
-    [Authorize(Roles = "Dentist")] 
+    [Authorize(Roles = "Dentist")]
     public async Task<IActionResult> UploadProfilePicture(IFormFile file)
     {
        

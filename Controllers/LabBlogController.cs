@@ -139,6 +139,20 @@ public class LabBlogController : ControllerBase
         }
     }
 
+    [HttpGet("feed")]
+    [Authorize(Roles = "Lab")]
+    public async Task<IActionResult> GetFeed()
+    {
+        try
+        {
+            return Ok(await _labBlogService.GetAllApprovedPostsAsync());
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("doctor-posts")]
     [Authorize(Roles = "Lab")]
     public async Task<IActionResult> GetDoctorPosts()
