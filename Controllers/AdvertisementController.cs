@@ -220,7 +220,7 @@ public class AdvertisementController : ControllerBase
         });
     }
 
-    [Authorize(Roles = "Admin,Dentist")]
+    //[Authorize(Roles = "Admin,Dentist")]
     [HttpGet("dentists")]
     public async Task<IActionResult> GetAdvertisementsForDentists()
     {
