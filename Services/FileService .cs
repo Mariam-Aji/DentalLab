@@ -24,19 +24,23 @@ namespace DentalLab.Api.Services
 
         public async Task<string> UploadStlToCaseAsync(int caseOrderId, IFormFile file)
         {
+            // 1. التحقق من وجود الملف
             if (file == null || file.Length == 0)
-                throw new Exception("File is empty");
+                throw new ArgumentException("لم يتم رفع أي ملف، يرجى اختيار ملف صالح.");
 
+            // 2. التحقق من اللاحقة (حصر الرفع بـ .stl فقط)
             var ext = Path.GetExtension(file.FileName).ToLower();
 
             if (ext != ".stl")
-                throw new Exception("Only STL files are allowed");
+                throw new InvalidOperationException("عذراً، يرجى رفع ملف بصيغة STL حصراً (.stl).");
 
+            // 3. التحقق من وجود الطلب
             var caseOrder = await _context.CaseOrders.FindAsync(caseOrderId);
 
             if (caseOrder == null)
-                throw new Exception("CaseOrder not found");
+                throw new KeyNotFoundException("الطلب غير موجود.");
 
+            // 4. إعداد مسار الحفظ
             var uploadsPath = Path.Combine(
                 _env.ContentRootPath,
                 "uploads",
@@ -61,6 +65,7 @@ namespace DentalLab.Api.Services
                 "stl",
                 fileName).Replace("\\", "/");
 
+            // 5. حفظ السجل في قاعدة البيانات
             var fileEntity = new FileResource
             {
                 Path = relativePath,

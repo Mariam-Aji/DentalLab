@@ -19,8 +19,29 @@ namespace DentalLab.Api.Controllers
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadStl(int caseOrderId, IFormFile file)
         {
-            var result = await _fileService.UploadStlToCaseAsync(caseOrderId, file);
-            return Ok(new { path = result });
+            try
+            {
+                var result = await _fileService.UploadStlToCaseAsync(caseOrderId, file);
+                return Ok(new { path = result });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                // إرجاع HTTP 400 في حال عدم وجود ملف
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                // إرجاع HTTP 404 في حال عدم وجود الطلب
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"حدث خطأ غير متوقع: {ex.Message}" });
+            }
         }
         [Authorize(Roles = "Admin")]
         [HttpGet("stl/{caseOrderId}")]

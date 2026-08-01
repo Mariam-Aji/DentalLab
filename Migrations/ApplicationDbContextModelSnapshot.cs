@@ -217,6 +217,55 @@ namespace DentalLab.Api.Migrations
                     b.ToTable("CaseOrderItems");
                 });
 
+            modelBuilder.Entity("DentalLab.Api.Models.Complaint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AdminId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Destination")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RepliedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reply")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TargetLabId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("TargetLabId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Complaints");
+                });
+
             modelBuilder.Entity("DentalLab.Api.Models.ConnectionRequest", b =>
                 {
                     b.Property<int>("Id")
@@ -889,6 +938,31 @@ namespace DentalLab.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("CaseOrder");
+                });
+
+            modelBuilder.Entity("DentalLab.Api.Models.Complaint", b =>
+                {
+                    b.HasOne("DentalLab.Api.Models.User", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DentalLab.Api.Models.Lab", "TargetLab")
+                        .WithMany()
+                        .HasForeignKey("TargetLabId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DentalLab.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+
+                    b.Navigation("TargetLab");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DentalLab.Api.Models.ConnectionRequest", b =>

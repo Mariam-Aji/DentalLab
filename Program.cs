@@ -2,7 +2,9 @@
 using DentalLab.Api.Data;
 // using DentalLab.Api.Hubs; // ?? ??????? ?? ??????? ??? ??? ???? ??? Hub ??????
 using DentalLab.Api.Repositories;
+using DentalLab.Api.Repositories.Interfaces;
 using DentalLab.Api.Services;
+using DentalLab.Api.Services.Interfaces;
 using DentalLab.Api.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -16,18 +18,19 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. ????? ??? Controllers ??????? ??? JSON ???? ??????? ????????? ???? ??? Enums ?????
+// 1. إعداد الـ Controllers والتعديل هنا لإظهار الحقول حتى لو كانت null
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never; // <--- تم التعديل هنا لكي تظهر الحقول حتى لو كانت null
 
     })
     .AddNewtonsoftJson(options =>
     {
         options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
+        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include; // <--- تم التعديل هنا أيضاً لضمان ظهورها مع Newtonsoft إذا تم استخدامها
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -125,7 +128,14 @@ builder.Services.AddScoped<IDentistVerificationService, DentistVerificationServi
 builder.Services.AddScoped<ILabSubscriptionRepository, LabSubscriptionRepository>();
 builder.Services.AddScoped<ILabSubscriptionService, LabSubscriptionService>();
 builder.Services.AddScoped<ILabPaymentRepository, LabPaymentRepository>();
-
+builder.Services.AddScoped<IFinancialReportRepository, FinancialReportRepository>();
+builder.Services.AddScoped<ISubscriptionReportRepository, SubscriptionReportRepository>();
+builder.Services.AddScoped<ISubscriptionReportService, SubscriptionReportService>();
+// أضف هذه السطور مع بقية تسجيلات الخدمات في ملف Program.cs
+builder.Services.AddScoped<IComplaintRepository, ComplaintRepository>();
+builder.Services.AddScoped<IComplaintService, ComplaintService>();
+// تسجيل طبقة الخدمات (Services)
+builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 builder.Services.AddHttpClient<GatewayPaymentService>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddHttpClient<IMyFatoorahService, MyFatoorahService>();
