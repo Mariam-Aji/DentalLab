@@ -53,5 +53,12 @@ namespace DentalLab.Api.Repositories
                 .Select(cr => cr.ToLab)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Lab>> GetallLabsWithOwnersAsync()
+        {
+            return await _context.Labs
+                .Include(l => l.Owner)
+                .ToListAsync();
+        }
     }
 }

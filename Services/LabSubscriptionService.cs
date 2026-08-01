@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DentalLab.Api.Dtos;
 using DentalLab.Api.Models;
@@ -9,10 +11,14 @@ namespace DentalLab.Api.Services
     public class LabSubscriptionService : ILabSubscriptionService
     {
         private readonly ILabSubscriptionRepository _subscriptionRepository;
+        private readonly IEmailService _emailService; // 🌟 إضافة خدمة البريد الإلكتروني
 
-        public LabSubscriptionService(ILabSubscriptionRepository subscriptionRepository)
+        public LabSubscriptionService(
+            ILabSubscriptionRepository subscriptionRepository,
+            IEmailService emailService) // 🌟 حقن الخدمة في Constructor
         {
             _subscriptionRepository = subscriptionRepository;
+            _emailService = emailService;
         }
 
         public async Task<(bool Success, string Message)> CreateLabSubscriptionAsync(int labId, CreateSubscriptionDto dto)
@@ -21,13 +27,11 @@ namespace DentalLab.Api.Services
             if (lab == null) return (false, "المخبر المحدد غير موجود.");
             if (lab.Owner == null) return (false, "المستخدم المرتبط بهذا المخبر غير موجود.");
 
-            // 🌟 الفحص: منع تسجيل المشترك مسبقاً وتوجيهه للتجديد
             if (lab.SubscriptionPayments != null && lab.SubscriptionPayments.Any())
             {
                 return (false, "هذا المشترك موجود مسبقاً في النظام. يرجى استخدام خيار (تجديد الاشتراك) بدلاً من تسجيل اشتراك جديد.");
             }
 
-            // بناء كائن الدفع الجديد للاشتراك لأول مرة
             var subscriptionPayment = new LabSubscriptionPayment
             {
                 LabId = labId,
@@ -47,8 +51,18 @@ namespace DentalLab.Api.Services
             await _subscriptionRepository.AddSubscriptionPaymentAsync(subscriptionPayment);
             await _subscriptionRepository.UpdateLabAndUserAsync(lab, lab.Owner);
 
+            // 🌟 إرسال إيميل التفعيل للمستخدم
+            if (!string.IsNullOrEmpty(lab.Owner.Email))
+            {
+                var emailSubject = "تفعيل حساب المخبر الخاص بك";
+                var emailBody = $"مرحباً {lab.Owner.Name}،\n\nتم تسجيل اشتراك المخبر الخاص بك وتفعيل حسابك بنجاح في النظام.\nفترة الاشتراك: من {dto.PeriodStartUtc:yyyy-MM-dd} إلى {dto.PeriodEndUtc:yyyy-MM-dd}.\n\nشكراً لاستخدامك خدماتنا.";
+
+                await _emailService.SendEmailAsync(lab.Owner.Email, emailSubject, emailBody);
+            }
+
             return (true, "تم تسجيل الاشتراك الأول وتفعيل حساب المخبر بنجاح.");
         }
+
         public async Task<IEnumerable<ActiveLabDto>> GetActiveSubscribedLabsAsync()
         {
             var labs = await _subscriptionRepository.GetActiveSubscribedLabsAsync();
@@ -57,22 +71,18 @@ namespace DentalLab.Api.Services
             var activeLabsList = new List<Lab>();
             var expiredLabsList = new List<Lab>();
 
-            // قائمة مساعدة لحفظ تواريخ أحدث الدفعات لكل مخبر لاستخدامها أثناء الـ Mapping
             var labLatestPayments = new Dictionary<int, LabSubscriptionPayment>();
 
             foreach (var lab in labs)
             {
-                // 🌟 جلب أحدث دفعة اشتراك لهذا المخبر من جدول الـ Payments
                 var latestPayment = lab.SubscriptionPayments
                     .OrderByDescending(p => p.PaidAtUtc)
                     .FirstOrDefault();
 
                 if (latestPayment != null)
                 {
-                    // حفظ الدفعة للرجوع إليها لاحقاً
                     labLatestPayments[lab.Id] = latestPayment;
 
-                    // الفحص بناءً على تاريخ انتهاء الدفعة المسجلة في جدول المدفوعات
                     if (latestPayment.PeriodEndUtc <= now)
                     {
                         if (lab.Owner != null)
@@ -99,18 +109,15 @@ namespace DentalLab.Api.Services
                 }
                 else
                 {
-                    // إذا لم يمتلك المخبر أي دفعة سابقة في الجدول، نعتبره منتهياً أو غير مشترك
                     expiredLabsList.Add(lab);
                 }
             }
 
-            // تحديث الحسابات المنتهية في قاعدة البيانات
             if (expiredLabsList.Any())
             {
                 await _subscriptionRepository.UpdateLabsRangeAsync(expiredLabsList);
             }
 
-            // إرجاع المخابر النشطة مع تعبئة البيانات من جدول الـ Payments مباشرة
             return activeLabsList.Select(l =>
             {
                 var payment = labLatestPayments[l.Id];
@@ -119,28 +126,25 @@ namespace DentalLab.Api.Services
                     LabId = l.Id,
                     LabName = l.Owner?.Name ?? "مخبر غير مسمى",
                     Email = l.Owner?.Email ?? string.Empty,
-                    SubscriptionStartUtc = payment.PeriodStartUtc, // القراءة من جدول المدفوعات
-                    SubscriptionEndUtc = payment.PeriodEndUtc,     // القراءة من جدول المدفوعات
+                    SubscriptionStartUtc = payment.PeriodStartUtc,
+                    SubscriptionEndUtc = payment.PeriodEndUtc,
                     RemainingDays = (payment.PeriodEndUtc - now).Days
                 };
             });
         }
-        // 1️⃣ تابع تعديل معلومات الاشتراك الحالي
+
         public async Task<(bool Success, string Message)> UpdateSubscriptionInfoAsync(int labId, UpdateSubscriptionDto dto)
         {
             var lab = await _subscriptionRepository.GetLabWithUserAsync(labId);
             if (lab == null) return (false, "المخبر المحدد غير موجود.");
 
-            // جلب أحدث دفعة لتعديل بياناتها
             var latestPayment = await _subscriptionRepository.GetLatestPaymentAsync(labId);
             if (latestPayment == null) return (false, "لا يوجد سجل اشتراك سابق لتعديله.");
 
-            // تحديث بيانات الدفعة المالية
             latestPayment.Amount = dto.Amount;
             latestPayment.PeriodStartUtc = dto.PeriodStartUtc;
             latestPayment.PeriodEndUtc = dto.PeriodEndUtc;
 
-            // تحديث البيانات الأساسية في جدول المخبر أيضاً لتبقى متطابقة
             lab.SubscriptionStartUtc = dto.PeriodStartUtc;
             lab.SubscriptionEndUtc = dto.PeriodEndUtc;
 
@@ -150,14 +154,12 @@ namespace DentalLab.Api.Services
             return (true, "تم تعديل معلومات الاشتراك بنجاح.");
         }
 
-        // 2️⃣ تابع تجديد الاشتراك (شحن مالي وتمديد فترة)
         public async Task<(bool Success, string Message)> RenewSubscriptionAsync(int labId, RenewSubscriptionDto dto)
         {
             var lab = await _subscriptionRepository.GetLabWithUserAsync(labId);
             if (lab == null) return (false, "المخبر المحدد غير موجود.");
             if (lab.Owner == null) return (false, "المستخدم المرتبط بهذا المخبر غير موجود.");
 
-            // إنشاء سجل دفع جديد تماماً في جدول الاشتراكات والمدفوعات
             var newRenewalPayment = new LabSubscriptionPayment
             {
                 LabId = labId,
@@ -169,19 +171,26 @@ namespace DentalLab.Api.Services
                 Reference = "Renewed by Admin"
             };
 
-            // تحديث حقول الصلاحية في جدول المخبر الأساسي بناءً على التجديد الجديد
             lab.SubscriptionStartUtc = dto.PeriodStartUtc;
             lab.SubscriptionEndUtc = dto.PeriodEndUtc;
 
-            // إعادة تفعيل الحساب تلقائياً في حال كان معلقاً بسبب انتهاء الاشتراك السابق
             lab.Owner.Status = AccountStatus.Active;
 
-            // حفظ السجل المالي الجديد وتحديث حالة المخبر والمستخدم
             await _subscriptionRepository.AddSubscriptionPaymentAsync(newRenewalPayment);
             await _subscriptionRepository.UpdateLabAndUserAsync(lab, lab.Owner);
 
+            // 🌟 إرسال إيميل التجديد وإعادة التفعيل للمستخدم
+            if (!string.IsNullOrEmpty(lab.Owner.Email))
+            {
+                var emailSubject = "تجديد اشتراك وتفعيل حساب المخبر";
+                var emailBody = $"مرحباً {lab.Owner.Name}،\n\nتم تجديد اشتراك المخبر الخاص بك وإعادة تفعيل الحساب بنجاح.\nالفترة الجديدة: من {dto.PeriodStartUtc:yyyy-MM-dd} إلى {dto.PeriodEndUtc:yyyy-MM-dd}.\n\nشكراً لاستخدامك خدماتنا.";
+
+                await _emailService.SendEmailAsync(lab.Owner.Email, emailSubject, emailBody);
+            }
+
             return (true, "تم تجديد الاشتراك وشحن الحساب بنجاح، وإعادة تفعيل صلاحيات المخبر.");
         }
+
         public async Task<IEnumerable<ActiveLabDto>> GetExpiredLabsAsync()
         {
             var expiredLabs = await _subscriptionRepository.GetExpiredLabsAsync();
@@ -189,7 +198,6 @@ namespace DentalLab.Api.Services
 
             return expiredLabs.Select(l =>
             {
-                // جلب أحدث دفعة اشتراك لهذا المخبر إن وجدت
                 var latestPayment = l.SubscriptionPayments?
                     .OrderByDescending(p => p.PaidAtUtc)
                     .FirstOrDefault();

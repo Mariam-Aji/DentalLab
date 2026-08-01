@@ -126,7 +126,7 @@ public class LabBlogController : ControllerBase
     }
 
     [HttpGet("all-posts")]
-    [Authorize(Roles = "Lab")]
+    [Authorize(Roles = "Lab,Dentist")]
     public async Task<IActionResult> GetAllLabPosts()
     {
         try

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using DentalLab.Api.Models;
 using DentalLab.Api.Data;
@@ -20,31 +21,51 @@ public class PaymentRepository : IPaymentRepository
             .FirstOrDefaultAsync(o => o.Id == orderId);
     }
 
-    public async Task<bool> UpdateOrderPaymentStatusAsync(int orderId, decimal paidAmount, bool isPaid)
+    public async Task<CaseOrder?> UpdateOrderPaymentStatusAsync(int orderId, decimal paidAmount, bool isPaid)
     {
-        var order = await _context.CaseOrders.FindAsync(orderId);
-        if (order == null) return false;
+        var order = await _context.CaseOrders
+            .Include(o => o.CreatedBy)                     // الطبيب الدافع
+            .Include(o => o.AssignedLab)                   // ملف المخبر المسند
+                .ThenInclude(l => l!.Owner)                // مالك المخبر من جدول Users
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return null;
 
         order.IsPaid = isPaid;
+        if (isPaid)
+        {
+            order.PaidAt = DateTime.UtcNow;
+        }
+
         _context.CaseOrders.Update(order);
         await _context.SaveChangesAsync();
-        return true;
+        return order;
     }
+
     public async Task<Advertisement?> GetAdvertisementWithUserAsync(int adId)
     {
         return await _context.Advertisements
-            .Include(a => a.User) // جلب بيانات المستخدم الناشر (طبيب، مخبر، أو عميل إعلانات)
+            .Include(a => a.User)
             .FirstOrDefaultAsync(a => a.Id == adId);
     }
 
-    public async Task<bool> UpdateAdPaymentStatusAsync(int adId, decimal paidAmount, bool isPaid)
+    public async Task<Advertisement?> UpdateAdPaymentStatusAsync(int adId, decimal paidAmount, bool isPaid)
     {
-        var ad = await _context.Advertisements.FindAsync(adId);
-        if (ad == null) return false;
+        var ad = await _context.Advertisements
+            .Include(a => a.User)
+            .FirstOrDefaultAsync(a => a.Id == adId);
 
-        ad.IsPaid = isPaid; // تحديث حقل الدفع في الإعلان
+        if (ad == null) return null;
+
+        ad.IsPaid = isPaid;
+
+        if (isPaid)
+        {
+            ad.PaidAt = DateTime.UtcNow;
+        }
+
         _context.Advertisements.Update(ad);
         await _context.SaveChangesAsync();
-        return true;
+        return ad;
     }
 }

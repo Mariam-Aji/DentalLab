@@ -10,5 +10,6 @@ namespace DentalLab.Api.Repositories
         Task<IEnumerable<Lab>> GetLabsByAvailabilityAsync(AvailabilityStatus status);
         Task<List<int>> GetConnectedLabIdsForDentistAsync(int dentistId);
         Task<IEnumerable<Lab>> GetConnectedLabsForDentistAsync(int dentistId);
+        Task<IEnumerable<Lab>> GetallLabsWithOwnersAsync();
     }
 }

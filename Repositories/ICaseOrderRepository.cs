@@ -40,5 +40,9 @@ public interface ICaseOrderRepository
     Task<bool> UpdateUserAsync(User user);
     Task<List<CompensationDemandChartDto>> GetCompensationDemandChartDataAsync();
     Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync();
+    Task<List<CaseOrder>> GetPaidOrdersByDentistAsync(int dentistId);
+    Task<List<CaseOrder>> GetUnpaidOrdersByDentistAsync(int dentistId);
+    Task<List<CaseOrder>> GetOrdersByPatientIdAsync(int patientId);
+    Task<List<CaseOrder>> GetOrdersWithPatientsAsync();
 
 }

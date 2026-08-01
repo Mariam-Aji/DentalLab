@@ -244,5 +244,37 @@ public class AdvertisementRepository : IAdvertisementRepository
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
     }
+    public async Task<List<Advertisement>> GetPaidAdvertisementsByUserAsync(int userId)
+    {
+        return await _context.Advertisements // جدول الإعلانات حصراً
+            .Include(a => a.User)
+            .Where(a => a.UserId == userId && a.IsPaid)
+            .ToListAsync();
+    }
 
+    // 5. تابع لعرض الفواتير غير المدفوعة للإعلانات مع تفاصيل المستخدم الناشر كاملة
+    public async Task<List<Advertisement>> GetUnpaidAdvertisementsByUserAsync(int userId)
+    {
+        return await _context.Advertisements
+            .AsNoTracking()
+            .Include(a => a.User) 
+            .Where(a => a.UserId == userId && !a.IsPaid)
+            .OrderByDescending(a => a.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<List<Advertisement>> GetAllPaidAdvertisementsAsync()
+    {
+        return await _context.Advertisements
+            .Include(a => a.User)
+            .Where(a => a.IsPaid == true)
+            .ToListAsync();
+    }
+
+    public async Task<List<Advertisement>> GetAllUnpaidAdvertisementsAsync()
+    {
+        return await _context.Advertisements
+            .Include(a => a.User)
+            .Where(a => a.IsPaid == false && a.User != null && a.User.Role != UserRole.ADSClient)
+            .ToListAsync();
+    }
 }

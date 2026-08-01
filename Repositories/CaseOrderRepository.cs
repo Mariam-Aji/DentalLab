@@ -413,6 +413,50 @@ public class CaseOrderRepository : ICaseOrderRepository
 
         return result;
     }
+    public async Task<List<CaseOrder>> GetPaidOrdersByDentistAsync(int dentistId)
+    {
+        return await _context.CaseOrders // جدول الطلبيات حصراً
+            .Include(o => o.CreatedBy)
+            .Include(o => o.AssignedLab)
+            .Include(o => o.Patient)
+            .Include(o => o.Items)
+            .Where(o => o.CreatedBy.Id == dentistId && o.IsPaid)
+            .ToListAsync();
+    }
 
+    // 4. تابع لعرض الفواتير غير المدفوعة للطلبيات الخاصة بالطبيب مع كامل التفاصيل
+    public async Task<List<CaseOrder>> GetUnpaidOrdersByDentistAsync(int dentistId)
+    {
+        return await _context.CaseOrders
+            .AsNoTracking()
+            .Include(o => o.CreatedBy)      // تفاصيل الطبيب
+            .Include(o => o.AssignedLab)    // تفاصيل المخبر وعنوانه
+            .Include(o => o.Patient)
+            .Include(o => o.Items)
+            .Include(o => o.Files)
+            .Where(o => o.CreatedById == dentistId && !o.IsPaid)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<List<CaseOrder>> GetOrdersByPatientIdAsync(int patientId)
+    {
+        return await _context.CaseOrders
+            .Include(o => o.Patient)
+            .Include(o => o.CreatedBy)
+            .Include(o => o.AssignedLab)
+            .Where(o => o.PatientId == patientId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
+    public async Task<List<CaseOrder>> GetOrdersWithPatientsAsync()
+    {
+        return await _context.CaseOrders
+            .Include(o => o.Patient)
+            .Include(o => o.CreatedBy)
+            .Include(o => o.AssignedLab)
+            .Where(o => o.PatientId != null) // جلب الطلبيات المربوطة بمريض فقط
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
 }
     

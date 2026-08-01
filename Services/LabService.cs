@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DentalLab.Api.Dtos;
+using DentalLab.Api.DTOs;
 using DentalLab.Api.Models;
 using DentalLab.Api.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalLab.Api.Services
 {
@@ -101,6 +103,36 @@ namespace DentalLab.Api.Services
                 AverageRating = Math.Round(average, 1),
                 RatingsCount = count
             };
+        }
+        public async Task<List<AdminLabDto>> GetAllLabsForAdminAsync()
+        {
+            // جلب المخابر مع بيانات المالك باستخدام الـ Repository بدلاً من الـ DbContext المباشر
+            var labs = await _labRepository.GetAllLabsWithOwnersAsync();
+
+            return labs.Select(l => new AdminLabDto
+            {
+                Id = l.Id,
+                Description = l.Description,
+                YearsOfExperience = l.YearsOfExperience,
+                Specialties = l.Specialties ?? new List<string>(),
+                Materials = l.Materials ?? new List<string>(),
+                Availability = l.Availability.ToString(), // تحويل الـ Enum إلى نص مباشر
+                HasScanVisitService = l.HasScanVisitService,
+                AverageRating = l.AverageRating,
+                SubscriptionStartUtc = l.SubscriptionStartUtc,
+                SubscriptionEndUtc = l.SubscriptionEndUtc,
+
+                // تعيين بيانات صاحب المخبر بأمان
+                OwnerId = l.Owner?.Id ?? 0,
+                OwnerName = l.Owner?.Name ?? "",
+                OwnerEmail = l.Owner?.Email ?? "",
+                OwnerPhone = l.Owner?.Phone ?? "",
+                LabNamePlace = l.Owner?.NamePlace ?? "",
+                AddressPlace = l.Owner?.AddressPlace ?? "",
+                CityPlace = l.Owner?.CityPlace ?? "",
+                CountryPlace = l.Owner?.CountryPlace ?? "",
+                ProfilePictureUrl = l.Owner?.ProfilePictureUrl
+            }).ToList();
         }
     }
 }

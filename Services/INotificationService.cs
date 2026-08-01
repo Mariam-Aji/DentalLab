@@ -1,3 +1,4 @@
+using DentalLab.Api.DTOs;
 using DentalLab.Api.Models;
 
 namespace DentalLab.Api.Services;
@@ -12,4 +13,5 @@ public interface INotificationService
     /// </summary>
     Task SendAsync(int recipientUserId, string message, NotificationType type,
                    int? orderId = null, int? labId = null);
+    Task<List<NotificationDto>> GetDoctorNotificationsAsync(int doctorId);
 }

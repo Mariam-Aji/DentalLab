@@ -21,10 +21,13 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+
     })
     .AddNewtonsoftJson(options =>
     {
         options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -133,6 +136,11 @@ builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IProfilePictureService, ProfilePictureService>();
 builder.Services.AddScoped<ILabAdvertisementService, LabAdvertisementService>();
 builder.Services.AddScoped<ILabAdCreateService, LabAdCreateService>();
+builder.Services.AddScoped<ICaseOrderRepository, CaseOrderRepository>();
+builder.Services.AddScoped<IAdvertisementRepository, AdvertisementRepository>();
+builder.Services.AddScoped<IBillingService, BillingService>();
+builder.Services.AddScoped<IMyFatoorahService, MyFatoorahService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });

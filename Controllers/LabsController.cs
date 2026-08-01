@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using System.Threading.Tasks;
 using DentalLab.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DentalLab.Api.Controllers
@@ -51,5 +52,31 @@ namespace DentalLab.Api.Controllers
             }
             return null;
         }
-    }
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllLabsForAdmin()
+        {
+            var labs = await _labService.GetAllLabsForAdminAsync();
+
+            if (labs == null || !labs.Any())
+            {
+                return Ok(new
+                {
+                    success = true,
+                    message = "لا توجد مخابر مسجلة حالياً.",
+                    count = 0,
+                    data = new List<object>()
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "تم جلب المخابر بنجاح.",
+                count = labs.Count,
+                data = labs
+            });
+        }
+    
+}
 }

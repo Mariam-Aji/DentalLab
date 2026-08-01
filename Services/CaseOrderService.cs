@@ -1,4 +1,5 @@
 ﻿using DentalLab.Api.Dtos;
+using DentalLab.Api.DTOs;
 using DentalLab.Api.Models;
 using DentalLab.Api.Repositories;
 using Microsoft.AspNetCore.Hosting;
@@ -835,6 +836,67 @@ namespace DentalLab.Api.Services
         public async Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync()
         {
             return await _repo.GetCaseStatusChartDataAsync();
+        }
+        public async Task<List<PatientCaseOrderDto>> GetOrdersByPatientIdAsync(int patientId)
+        {
+            var orders = await _repo.GetOrdersByPatientIdAsync(patientId);
+
+            return orders.Select(o => new PatientCaseOrderDto
+            {
+                Id = o.Id,
+                Title = o.Title,
+                Status = o.Status.ToString(),
+                ImpressionStage = o.ImpressionStage.ToString(),
+                ImpressionType = o.ImpressionType.ToString(),
+                Shade = o.Shade,
+                IsUrgent = o.IsUrgent,
+                IsTemporary = o.IsTemporary,
+                DeliveryDate = o.DeliveryDate,
+                Notes = o.Notes,
+                EstimatedPrice = o.EstimatedPrice,
+                FinalPrice = o.FinalPrice,
+                IsPaid = o.IsPaid,
+                PaidAt = o.PaidAt,
+                CreatedAt = o.CreatedAt,
+
+                PatientId = o.PatientId ?? 0,
+                PatientName = o.Patient?.FullName ?? "",
+                CreatedById = o.CreatedById,
+                DentistName = o.CreatedBy?.Name ?? "",
+                AssignedLabId = o.AssignedLabId,
+                LabName = o.AssignedLab?.Description ?? (o.AssignedLabId.HasValue ? $"Lab #{o.AssignedLabId}" : null)
+            }).ToList();
+        
+        }
+        public async Task<List<PatientCaseOrderDto>> GetOrdersWithPatientsAsync()
+        {
+            var orders = await _repo.GetOrdersWithPatientsAsync();
+
+            return orders.Select(o => new PatientCaseOrderDto
+            {
+                Id = o.Id,
+                Title = o.Title,
+                Status = o.Status.ToString(),
+                ImpressionStage = o.ImpressionStage.ToString(),
+                ImpressionType = o.ImpressionType.ToString(),
+                Shade = o.Shade,
+                IsUrgent = o.IsUrgent,
+                IsTemporary = o.IsTemporary,
+                DeliveryDate = o.DeliveryDate,
+                Notes = o.Notes,
+                EstimatedPrice = o.EstimatedPrice,
+                FinalPrice = o.FinalPrice,
+                IsPaid = o.IsPaid,
+                PaidAt = o.PaidAt,
+                CreatedAt = o.CreatedAt,
+
+                PatientId = o.PatientId ?? 0,
+                PatientName = o.Patient?.FullName ?? "",
+                CreatedById = o.CreatedById,
+                DentistName = o.CreatedBy?.Name ?? "",
+                AssignedLabId = o.AssignedLabId,
+                LabName = o.AssignedLab?.Description ?? (o.AssignedLabId.HasValue ? $"Lab #{o.AssignedLabId}" : null)
+            }).ToList();
         }
     }
 }

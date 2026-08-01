@@ -313,6 +313,52 @@ public class CaseOrdersController : ControllerBase
             data = chartData
         });
     }
+    [Authorize(Roles = "Dentist")]
+    [HttpGet("patient/{patientId:int}")]
+    public async Task<IActionResult> GetOrdersByPatient(int patientId)
+    {
+        var orders = await _service.GetOrdersByPatientIdAsync(patientId);
+
+        if (!orders.Any())
+        {
+            return Ok(new
+            {
+                success = true,
+                message = "لا توجد طلبيات مرتبطة بهذا المريض حالياً.",
+                data = orders
+            });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            message = "تم جلب طلبيات المريض بنجاح.",
+            data = orders
+        });
+    }
+    [Authorize(Roles = "Dentist")]
+    [HttpGet("with-patients")]
+    public async Task<IActionResult> GetOrdersWithPatients()
+    {
+        var orders = await _service.GetOrdersWithPatientsAsync();
+
+        if (!orders.Any())
+        {
+            return Ok(new
+            {
+                success = true,
+                message = "لا توجد طلبيات مرتبطة بمرضى حالياً.",
+                data = orders
+            });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            message = "تم جلب الطلبيات المربوطة بالمرضى بنجاح.",
+            data = orders
+        });
+    }
 }
 
     

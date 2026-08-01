@@ -1,5 +1,6 @@
 ﻿
 using DentalLab.Api.Dtos;
+using DentalLab.Api.DTOs;
 using DentalLab.Api.Models;
 using System.Threading.Tasks;
 
@@ -29,6 +30,8 @@ namespace DentalLab.Api.Services
         Task<(DentistOwnProfileDetailsDto? Profile, string? Error)> ModifyDentistPersonalProfileAsync(int userId, EditDentistOwnProfileDto dto);
         Task<List<CompensationDemandChartDto>> GetCompensationDemandChartDataAsync();
         Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync();
+        Task<List<PatientCaseOrderDto>> GetOrdersByPatientIdAsync(int patientId);
+        Task<List<PatientCaseOrderDto>> GetOrdersWithPatientsAsync();
     }
 }
 //

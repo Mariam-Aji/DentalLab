@@ -26,5 +26,9 @@ public interface IAdvertisementRepository
     Task<(List<Advertisement> Advertisements, int Count)> GetValidAdvertisementsByUserIdAsync(int userId);
     Task<List<Advertisement>> SearchAdvertisementsAsync(string searchTerm);
     Task<List<Advertisement>> GetPaidAndActiveAdvertisementsForDentistsAsync();
+    Task<List<Advertisement>> GetPaidAdvertisementsByUserAsync(int userId);
+    Task<List<Advertisement>> GetUnpaidAdvertisementsByUserAsync(int userId);
+    Task<List<Advertisement>> GetAllPaidAdvertisementsAsync();
+    Task<List<Advertisement>> GetAllUnpaidAdvertisementsAsync();
 
 }

@@ -7,17 +7,27 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using DentalLab.Api.Models;
+using DentalLab.Api.Services;
 
 public class MyFatoorahService : IMyFatoorahService
 {
     private readonly IPaymentRepository _paymentRepo;
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _config;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<MyFatoorahService> _logger;
 
-    public MyFatoorahService(IPaymentRepository paymentRepo, HttpClient httpClient, IConfiguration config)
+    public MyFatoorahService(
+        IPaymentRepository paymentRepo,
+        HttpClient httpClient,
+        IConfiguration config,
+        IEmailService emailService,
+        ILogger<MyFatoorahService> logger)
     {
         _paymentRepo = paymentRepo;
         _config = config;
+        _emailService = emailService;
+        _logger = logger;
 
         var handler = new HttpClientHandler
         {
@@ -41,7 +51,6 @@ public class MyFatoorahService : IMyFatoorahService
 
     public async Task<(bool Success, string? PaymentUrl, string? Error)> ProcessOrderPaymentAsync(int orderId, int doctorId, string currency = "USD")
     {
-        // 1. جلب الطلبية محملة ببيانات الطبيب والمخبر
         var order = await _paymentRepo.GetOrderWithUserAndLabAsync(orderId);
 
         if (order == null)
@@ -53,14 +62,12 @@ public class MyFatoorahService : IMyFatoorahService
         if (order.IsPaid)
             return (false, null, "هذه الطلبية مدفوعة بالكامل بالفعل.");
 
-        // الشرط المطلوب: الدفع متاح فقط عندما تكون حالة الطلبية Ready
         if (order.Status != CaseStatus.Ready)
             return (false, null, "لا يمكن إجراء الدفع، الطلبية ليست بحالة جاهزة (Ready).");
 
         if (order.AssignedLab == null)
             return (false, null, "هذه الطلبية غير مسندة لأي مخبر.");
 
-        // قراءة السعر الإجمالي
         decimal totalAmount = order.FinalPrice ?? order.EstimatedPrice ?? 0;
         if (totalAmount <= 0)
             return (false, null, "لا يمكن الدفع لطلب قيمته صفر أو غير محدد.");
@@ -73,16 +80,14 @@ public class MyFatoorahService : IMyFatoorahService
         string finalCurrency = currency.ToUpper();
         if (baseUrl.Contains("apitest") && (finalCurrency == "USD" || string.IsNullOrEmpty(finalCurrency)))
         {
-            finalCurrency = "KWD"; // بيئة الاختبار في MyFatoorah تفضل KWD
+            finalCurrency = "KWD";
         }
 
-        // 2. بناء جسم الطلب الديناميكي
         var payload = new Dictionary<string, object>
         {
             { "NotificationOption", "LNK" },
             { "InvoiceValue", totalAmount },
             { "DisplayCurrencyIso", finalCurrency },
-            // 👈 المرسل/الدافع (بيانات الطبيب)
             { "CustomerName", order.CreatedBy?.Name ?? "Dentist Guest" },
             { "CustomerEmail", order.CreatedBy?.Email ?? "test@example.com" },
             { "CustomerMobile", order.CreatedBy?.Phone ?? "00000000" },
@@ -92,7 +97,6 @@ public class MyFatoorahService : IMyFatoorahService
             { "Language", "ar" }
         };
 
-        // 👈 المستقبل/المستفيد (إذا كان المخبر يملك SupplierCode في MyFatoorah)
         if (order.AssignedLab.MyFatoorahSupplierCode.HasValue)
         {
             payload["Suppliers"] = new[]
@@ -106,85 +110,9 @@ public class MyFatoorahService : IMyFatoorahService
             };
         }
 
-        try
-        {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v2/SendPayment");
-            request.Headers.Clear();
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {apiKey}");
-            request.Content = JsonContent.Create(payload);
-
-            var response = await _httpClient.SendAsync(request);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                return (false, null, $"رفض السيرفر الخارجي الطلب برمز: {response.StatusCode}. التفاصيل: {errorContent}");
-            }
-
-            var jsonResult = await response.Content.ReadFromJsonAsync<JsonElement>();
-
-            if (jsonResult.TryGetProperty("IsSuccess", out var isSuccessProp) && isSuccessProp.GetBoolean())
-            {
-                var dataObject = jsonResult.GetProperty("Data");
-                string paymentUrl = dataObject.GetProperty("InvoiceURL").GetString()!;
-                return (true, paymentUrl, null);
-            }
-
-            string errMsg = jsonResult.TryGetProperty("Message", out var msgProp) ? msgProp.GetString()! : "استجابة غير صالحة من البوابة.";
-            return (false, null, errMsg);
-        }
-        catch (Exception ex)
-        {
-            return (false, null, $"فشل الاتصال: {ex.Message} -> {ex.InnerException?.Message}");
-        }
+        return await SendPaymentRequestToGateway(payload, apiKey, baseUrl);
     }
 
-    //public async Task<(bool Success, string Status, string? Error)> VerifyPaymentAsync(string paymentId)
-    //{
-    //    var payload = new { KeyType = "PaymentId", Key = paymentId };
-
-    //    string apiKey = GetCleanApiKey();
-    //    string baseUrl = GetCleanBaseUrl();
-
-    //    try
-    //    {
-    //        var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v2/GetPaymentStatus");
-    //        request.Headers.Clear();
-    //        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-    //        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {apiKey}");
-    //        request.Content = JsonContent.Create(payload);
-
-    //        var response = await _httpClient.SendAsync(request);
-    //        if (!response.IsSuccessStatusCode)
-    //        {
-    //            var errorContent = await response.Content.ReadAsStringAsync();
-    //            return (false, "Failed", $"فشل التحقق من حالة الفاتورة. التفاصيل: {errorContent}");
-    //        }
-
-    //        var jsonResult = await response.Content.ReadFromJsonAsync<JsonElement>();
-    //        if (!jsonResult.GetProperty("IsSuccess").GetBoolean())
-    //            return (false, "Failed", "البوابة رفضت عملية التحقق.");
-
-    //        var data = jsonResult.GetProperty("Data");
-    //        string invoiceStatus = data.GetProperty("InvoiceStatus").GetString()!;
-    //        string orderIdStr = data.GetProperty("CustomerReference").GetString()!;
-    //        decimal paidAmount = data.GetProperty("InvoiceValue").GetDecimal();
-
-    //        // عند نجاح الدفع يُعدل حقل IsPaid إلى true
-    //        if (invoiceStatus.Equals("PAID", StringComparison.OrdinalIgnoreCase) && int.TryParse(orderIdStr, out int orderId))
-    //        {
-    //            await _paymentRepo.UpdateOrderPaymentStatusAsync(orderId, paidAmount, true);
-    //            return (true, "Paid", null);
-    //        }
-
-    //        return (false, invoiceStatus, "عملية الدفع لم تكتمل بعد.");
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        return (false, "Error", $"حدث خطأ أثناء التحقق: {ex.Message}");
-    //    }
-    //}
     public async Task<(bool Success, string? PaymentUrl, string? Error)> ProcessAdPaymentAsync(int adId, int userId, string currency = "USD")
     {
         var ad = await _paymentRepo.GetAdvertisementWithUserAsync(adId);
@@ -213,7 +141,6 @@ public class MyFatoorahService : IMyFatoorahService
             finalCurrency = "KWD";
         }
 
-        // بناء الطلب: موجه بالكامل للمنصة (بدون حقل Suppliers)
         var payload = new Dictionary<string, object>
         {
             { "NotificationOption", "LNK" },
@@ -222,7 +149,7 @@ public class MyFatoorahService : IMyFatoorahService
             { "CustomerName", ad.User?.Name ?? "Ad Client" },
             { "CustomerEmail", ad.User?.Email ?? "test@example.com" },
             { "CustomerMobile", ad.User?.Phone ?? "00000000" },
-            { "CustomerReference", $"AD_{ad.Id}" }, // 👈 استخدام بادئة AD_ لتمييزه عن الطلبيات عند العودة
+            { "CustomerReference", $"AD_{ad.Id}" },
             { "CallBackUrl", callbackUrl },
             { "ErrorUrl", errorUrl },
             { "Language", "ar" }
@@ -231,7 +158,6 @@ public class MyFatoorahService : IMyFatoorahService
         return await SendPaymentRequestToGateway(payload, apiKey, baseUrl);
     }
 
-    // دالة مساعدة لإرسال الطلب لـ MyFatoorah تلافياً لتكرار الكود
     private async Task<(bool Success, string? PaymentUrl, string? Error)> SendPaymentRequestToGateway(Dictionary<string, object> payload, string apiKey, string baseUrl)
     {
         try
@@ -266,7 +192,7 @@ public class MyFatoorahService : IMyFatoorahService
         }
     }
 
-    // --- التحقق الموحد مع التمييز بين الإعلانات والطلبيات ---
+    // --- التحقق الموحد مع التمييز بين الإعلانات والطلبيات وإرسال الإيميل ---
     public async Task<(bool Success, string Status, string? Error)> VerifyPaymentAsync(string paymentId)
     {
         var payload = new { KeyType = "PaymentId", Key = paymentId };
@@ -298,18 +224,62 @@ public class MyFatoorahService : IMyFatoorahService
             string referenceStr = data.GetProperty("CustomerReference").GetString()!;
             decimal paidAmount = data.GetProperty("InvoiceValue").GetDecimal();
 
+            // استخراج رقم الفاتورة الخاص ببوابة الدفع
+            string invoiceId = data.TryGetProperty("InvoiceId", out var invProp)
+                ? invProp.GetInt32().ToString()
+                : paymentId;
+
             if (invoiceStatus.Equals("PAID", StringComparison.OrdinalIgnoreCase))
             {
-                // 👈 1. إذا كان المرجع يبدأ بـ AD_ فهو دفع خاص بإعلان
+                // 1. حالة الدفع مخصصة لإعلان
                 if (referenceStr.StartsWith("AD_") && int.TryParse(referenceStr.Substring(3), out int adId))
                 {
-                    await _paymentRepo.UpdateAdPaymentStatusAsync(adId, paidAmount, true);
+                    var updatedAd = await _paymentRepo.UpdateAdPaymentStatusAsync(adId, paidAmount, true);
+
+                    if (updatedAd?.User != null && !string.IsNullOrEmpty(updatedAd.User.Email))
+                    {
+                        decimal finalPaidValue = paidAmount > 0 ? paidAmount : (updatedAd.Price ?? 0);
+
+                        // الإعلان مدفوع لصالح إدارة / مالك المنصة
+                        string payeeName = "إدارة منصة DentalLab";
+
+                        await SendReceiptEmailAsync(
+                            toEmail: updatedAd.User.Email,
+                            userName: updatedAd.User.Name,
+                            itemTitle: $"حجز إعلان: {updatedAd.Title}",
+                            amount: finalPaidValue,
+                            payeeName: payeeName,
+                            invoiceId: invoiceId
+                        );
+                    }
+
                     return (true, "Paid", null);
                 }
-                // 👈 2. إذا كان رقماً بحتاً فهو دفع خاص بطلبية مخبر قديمة أو حالية
+                // 2. حالة الدفع مخصصة لطلبية مخبر
                 else if (int.TryParse(referenceStr, out int orderId))
                 {
-                    await _paymentRepo.UpdateOrderPaymentStatusAsync(orderId, paidAmount, true);
+                    var updatedOrder = await _paymentRepo.UpdateOrderPaymentStatusAsync(orderId, paidAmount, true);
+
+                    if (updatedOrder?.CreatedBy != null && !string.IsNullOrEmpty(updatedOrder.CreatedBy.Email))
+                    {
+                        decimal finalPaidValue = paidAmount > 0 ? paidAmount : (updatedOrder.FinalPrice ?? updatedOrder.EstimatedPrice ?? 0);
+
+                        // استخراج اسم المخبر المباشر من حقل NamePlace لمالك المخبر (Owner)
+                        var labOwner = updatedOrder.AssignedLab?.Owner;
+                        string labName = !string.IsNullOrWhiteSpace(labOwner?.NamePlace)
+                            ? labOwner.NamePlace
+                            : (!string.IsNullOrWhiteSpace(labOwner?.Name) ? labOwner.Name : "المخبر المستلم");
+
+                        await SendReceiptEmailAsync(
+                            toEmail: updatedOrder.CreatedBy.Email,
+                            userName: updatedOrder.CreatedBy.Name,
+                            itemTitle: $"طلبية حالة: {updatedOrder.Title}",
+                            amount: finalPaidValue,
+                            payeeName: labName,
+                            invoiceId: invoiceId
+                        );
+                    }
+
                     return (true, "Paid", null);
                 }
             }
@@ -319,6 +289,95 @@ public class MyFatoorahService : IMyFatoorahService
         catch (Exception ex)
         {
             return (false, "Error", $"حدث خطأ أثناء التحقق: {ex.Message}");
+        }
+    }
+    // دالة مساعدة لإرسال إيميل الفاتورة بالتنسيق الجديد
+    private async Task SendReceiptEmailAsync(
+     string toEmail,
+     string userName,
+     string itemTitle,
+     decimal amount,
+     string payeeName,
+     string invoiceId)
+    {
+        try
+        {
+            string subject = $"إيصال تأكيد الدفع - فاتورة رقم #{invoiceId}";
+            string body = $@"
+            <div dir='rtl' style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;'>
+                <h2 style='color: #2c3e50; text-align: center; border-bottom: 2px solid #27ae60; padding-bottom: 10px;'>إيصال استلام الدفعة</h2>
+                <p>مرحباً <strong>{userName}</strong>،</p>
+                <p>تمت عملية الدفع الخاصة بك بنجاح، وفيما يلي تفاصيل الفاتورة:</p>
+                
+                <table style='width: 100%; border-collapse: collapse; margin-top: 15px;'>
+                    <tr style='background-color: #f8f9fa;'>
+                        <td style='padding: 10px; border: 1px solid #ddd;'><strong>رقم الفاتورة:</strong></td>
+                        <td style='padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2c3e50;'>#{invoiceId}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 10px; border: 1px solid #ddd;'><strong>تفاصيل الخدمة:</strong></td>
+                        <td style='padding: 10px; border: 1px solid #ddd;'>{itemTitle}</td>
+                    </tr>
+                    <tr style='background-color: #f8f9fa;'>
+                        <td style='padding: 10px; border: 1px solid #ddd;'><strong>تم الدفع لصالح:</strong></td>
+                        <td style='padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2980b9;'>{payeeName}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 10px; border: 1px solid #ddd;'><strong>المبلغ المدفوع:</strong></td>
+                        <td style='padding: 10px; border: 1px solid #ddd; color: #27ae60; font-weight: bold;'>{amount:N2} USD</td>
+                    </tr>
+                    <tr style='background-color: #f8f9fa;'>
+                        <td style='padding: 10px; border: 1px solid #ddd;'><strong>تاريخ ووقت الدفع:</strong></td>
+                        <td style='padding: 10px; border: 1px solid #ddd;'>{DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC</td>
+                    </tr>
+                </table>
+
+                <p style='margin-top: 20px; text-align: center; color: #7f8c8d; font-size: 12px;'>هذه الرسالة تم إنشاؤها آلياً من منصة DentalLab.</p>
+            </div>";
+
+            await _emailService.SendEmailAsync(toEmail, subject, body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "حدث خطأ أثناء إرسال إيصال الدفع عبر البريد الإلكتروني.");
+        }
+    }
+
+    // دالة مساعدة لإرسال إيميل الفاتورة
+    private async Task SendReceiptEmailAsync(string toEmail, string userName, string itemTitle, decimal amount)
+    {
+        try
+        {
+            string subject = "تأكيد إتمام عملية الدفع بنجاح";
+            string body = $@"
+                <div dir='rtl' style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;'>
+                    <h2 style='color: #2c3e50; text-align: center;'>إيصال استلام الدفعة</h2>
+                    <p>مرحباً <strong>{userName}</strong>،</p>
+                    <p>نشكرك على استخدام منصتنا. تمت عملية الدفع الخاصة بك بنجاح، وفيما يلي تفاصيل الفاتورة:</p>
+                    
+                    <table style='width: 100%; border-collapse: collapse; margin-top: 15px;'>
+                        <tr style='background-color: #f8f9fa;'>
+                            <td style='padding: 10px; border: 1px solid #ddd;'><strong>الخدمة / المادة:</strong></td>
+                            <td style='padding: 10px; border: 1px solid #ddd;'>{itemTitle}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #ddd;'><strong>المبلغ المدفوع:</strong></td>
+                            <td style='padding: 10px; border: 1px solid #ddd; color: #27ae60; font-weight: bold;'>{amount:N2} USD</td>
+                        </tr>
+                        <tr style='background-color: #f8f9fa;'>
+                            <td style='padding: 10px; border: 1px solid #ddd;'><strong>تاريخ ووقت الدفع:</strong></td>
+                            <td style='padding: 10px; border: 1px solid #ddd;'>{DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC</td>
+                        </tr>
+                    </table>
+
+                    <p style='margin-top: 20px; text-align: center; color: #7f8c8d; font-size: 12px;'>هذه الرسالة تم إنشاؤها آلياً، يرجى عدم الرد عليها مباشرة.</p>
+                </div>";
+
+            await _emailService.SendEmailAsync(toEmail, subject, body);
+        }
+        catch
+        {
+            // تجنب إيقاف عملية الدفع في حال حدوث خلل مؤقت في خادم البريد
         }
     }
 }
