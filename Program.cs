@@ -87,6 +87,8 @@ builder.Services.AddScoped<ILabGalleryService, LabGalleryService>();
 builder.Services.AddScoped<ILabProfileService, LabProfileService>();
 builder.Services.AddScoped<ILabMyFatoorahCodeService, LabMyFatoorahCodeService>();
 builder.Services.AddScoped<ILabInvoiceService, LabInvoiceService>();
+builder.Services.AddScoped<ILabComplaintService, LabComplaintService>();
+builder.Services.AddScoped<ILabDentistProfileService, LabDentistProfileService>();
 builder.Services.AddScoped<ILabInvoiceSyncService, LabInvoiceSyncService>();
 builder.Services.AddScoped<IAdminAccountService, AdminAccountService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
@@ -114,7 +116,7 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IStatisticsRepository, StatisticsRepository>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IAdvertisementRepository, AdvertisementRepository>();
-
+builder.Services.AddScoped<IDentistNotificationService, DentistNotificationService>();
 builder.Services.AddScoped<IAdvertisementService, AdvertisementService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IPostService, PostService>();
@@ -223,11 +225,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
+
     app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DentalLab.Api v1");
+        c.RoutePrefix = string.Empty;
+    });
+
 
 app.UseHttpsRedirection();
 

@@ -6,10 +6,12 @@ namespace DentalLab.Api.Services;
 public class AdminAccountService : IAdminAccountService
 {
     private readonly IAdminAccountsRepository _repo;
+    private readonly IEmailSender _emailSender;
 
-    public AdminAccountService(IAdminAccountsRepository repo)
+    public AdminAccountService(IAdminAccountsRepository repo, IEmailSender emailSender)
     {
         _repo = repo;
+        _emailSender = emailSender;
     }
 
     public Task<List<User>> GetPendingDentistApprovalsAsync()
@@ -42,14 +44,22 @@ public class AdminAccountService : IAdminAccountService
         if (user == null) return "User not found.";
         if (user.Role != UserRole.Dentist) return "User is not a dentist.";
         if (requirePendingAdminApproval && user.Status != AccountStatus.PendingAdminApproval)
-        {
             return "Dentist is not pending admin approval.";
-        }
-
         if (user.Status == status) return "Dentist already has this status.";
 
         user.Status = status;
         await _repo.SaveChangesAsync();
+
+        // إرسال إيميل تأكيد التفعيل للطبيب
+        if (status == AccountStatus.Active)
+        {
+            await _emailSender.SendEmailAsync(
+                user.Email,
+                "تم تفعيل حسابك بنجاح",
+                $"مرحباً {user.Name}،\n\nيسعدنا إخبارك بأن حسابك على المنصة قد تم مراجعته والموافقة عليه بنجاح.\n\nيمكنك الآن تسجيل الدخول والاستفادة من جميع خدمات المنصة.\n\nمع تحيات فريق الدعم."
+            );
+        }
+
         return null;
     }
 

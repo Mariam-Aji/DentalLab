@@ -17,6 +17,7 @@ public enum NotificationType
     ConnectionAccepted,
     ConnectionRejected,
     Disconnected,
+    ComplaintReply,
 }
 
 public class Notification
