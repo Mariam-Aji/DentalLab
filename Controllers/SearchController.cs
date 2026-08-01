@@ -21,7 +21,7 @@ public class SearchController : ControllerBase
     /// <summary>
     /// البحث عن مخبر محدد مع جلب بياناته وصورة البروفايل وحالة الاتصال والتوفر والارتباط (متاح للزوار والأعضاء)
     /// </summary>
-    [HttpGet("labs")]
+    [HttpPost("labs")]
     [AllowAnonymous]
     public async Task<IActionResult> SearchLabs([FromForm] string name)
     {
@@ -61,7 +61,7 @@ public class SearchController : ControllerBase
     }
 
     
-    [HttpGet("blog")]
+    [HttpPost("blog")]
     [AllowAnonymous]
     public async Task<IActionResult> SearchBlog([FromForm] string query)
     {
