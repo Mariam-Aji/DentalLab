@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DentalLab.Api.Models;
 
-public enum SubscriptionPaymentMethod { ShamCash, Manual }
+public enum SubscriptionPaymentMethod { MyFatoorah, Manual }
 
 public class LabSubscriptionPayment
 {

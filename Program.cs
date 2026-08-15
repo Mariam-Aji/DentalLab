@@ -148,6 +148,8 @@ builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IProfilePictureService, ProfilePictureService>();
 builder.Services.AddScoped<ILabAdvertisementService, LabAdvertisementService>();
 builder.Services.AddScoped<ILabAdCreateService, LabAdCreateService>();
+builder.Services.AddScoped<ILabSubscriptionOnlineRepository, LabSubscriptionOnlineRepository>();
+builder.Services.AddScoped<ILabSubscriptionOnlineService, LabSubscriptionOnlineService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddHostedService<SubscriptionCheckerService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -215,7 +217,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 if (int.TryParse(userIdClaim, out int userId))
                 {
                     var user = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-                    if (user == null || user.Status == AccountStatus.Suspended)
+                    if (user == null || user.Status != AccountStatus.Active)
                     {
                         context.Fail("تم تعليق هذا الحساب أو انتهى اشتراكه، وتم إنهاء الجلسة.");
                     }

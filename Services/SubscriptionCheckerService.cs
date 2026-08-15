@@ -18,7 +18,7 @@ namespace DentalLab.Api.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var checkInterval = TimeSpan.FromSeconds(1);
+            var checkInterval = TimeSpan.FromDays(1);
 
             while (!stoppingToken.IsCancellationRequested)
             {
