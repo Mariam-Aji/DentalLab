@@ -10,5 +10,6 @@ namespace DentalLab.Api.Services
         Task<(bool Success, string Message)> UpdateSubscriptionInfoAsync(int labId, UpdateSubscriptionDto dto);
         Task<(bool Success, string Message)> RenewSubscriptionAsync(int labId, RenewSubscriptionDto dto);
         Task<IEnumerable<ActiveLabDto>> GetExpiredLabsAsync();
+        Task<bool> UpdateAllSubscriptionsAmountAsync(decimal newAmount);
     }
 }

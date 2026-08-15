@@ -134,5 +134,9 @@ namespace DentalLab.Api.Services
                 ProfilePictureUrl = l.Owner?.ProfilePictureUrl
             }).ToList();
         }
+        public async Task<int?> GetLabIdByUserIdAsync(int userId)
+        {
+            return await _labRepository.GetLabIdByUserIdAsync(userId);
+        }
     }
 }

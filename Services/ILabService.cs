@@ -11,5 +11,6 @@ namespace DentalLab.Api.Services
         Task<IEnumerable<LabDto>> GetConnectedLabsAsync(int? currentDentistId = null);
         Task<IEnumerable<LabDto>> GetDisconnectedLabsAsync(int? currentDentistId = null);
         Task<List<AdminLabDto>> GetAllLabsForAdminAsync();
+        Task<int?> GetLabIdByUserIdAsync(int userId);
     }
 }

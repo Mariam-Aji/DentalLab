@@ -13,5 +13,6 @@ namespace DentalLab.Api.Repositories
         Task UpdateLabsRangeAsync(IEnumerable<Lab> labs);
         Task<LabSubscriptionPayment?> GetLatestPaymentAsync(int labId);
         Task UpdateSubscriptionPaymentAsync(LabSubscriptionPayment payment);
+        Task<int> UpdateAllSubscriptionAmountsAsync(decimal newAmount);
     }
 }

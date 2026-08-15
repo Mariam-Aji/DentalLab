@@ -1,5 +1,6 @@
-
 using DentalLab.Api.Data;
+using DentalLab.Api.Models;
+
 // using DentalLab.Api.Hubs; // ?? ??????? ?? ??????? ??? ??? ???? ??? Hub ??????
 using DentalLab.Api.Repositories;
 using DentalLab.Api.Repositories.Interfaces;
@@ -17,7 +18,6 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. ????? ??? Controllers ??????? ??? JSON ???? ??????? ????????? ???? ??? Enums ?????
 // 1. إعداد الـ Controllers والتعديل هنا لإظهار الحقول حتى لو كانت null
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -35,36 +35,36 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 
-// 2. ????? ???? ??? SignalR ????????? ???????
+// 2. إعداد خدمة الـ SignalR للإشعارات الفورية
 builder.Services.AddSignalR();
 
-// 3. ????? ?????? ?????? ??? CORS ??? React (?????? ????????? ??? ????? ??????? ???? Credentials)
+// 3. إعداد سياسات الأمان للـ CORS لربط تطبيق React (مع السماح بإرسال الـ Credentials)
 builder.Services.AddCors(options =>
 {
-    // ????? ??? React ??????? ????? ???? ???? Credentials ???? ??? ????? ?? Port 5173
+    // سياسة خاصة بـ React لتسمح بإرسال الـ Credentials عبر الـ Port 5173
     options.AddPolicy("AllowReactApp", policy =>
     {
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // <--- ???? ???? ?? withCredentials ?? ??????? ??? SPA ???? SignalR
+              .AllowCredentials(); // <--- هامة جداً مع withCredentials في الطلبات أو SPA ومن ضمنها SignalR
     });
 
-    // ??????? ?????? ???????
+    // سياسة مفتوحة للجميع
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader());
 });
 
-// 4. ??? ????????? (Settings) ?? ??? ??? appsettings.json
+// 4. قراءة الإعدادات (Settings) من ملف appsettings.json
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection("OtpSettings"));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services.Configure<RefreshTokenSettings>(builder.Configuration.GetSection("RefreshTokenSettings"));
 builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
 
-// 5. ??? ???? ????? ????????? ?????? (Dependency Injection)
+// 5. حقن تبعات الخدمات المستودعات (Dependency Injection)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ILabRepository, LabRepository>();
@@ -133,10 +133,10 @@ builder.Services.AddScoped<ILabPaymentRepository, LabPaymentRepository>();
 builder.Services.AddScoped<IFinancialReportRepository, FinancialReportRepository>();
 builder.Services.AddScoped<ISubscriptionReportRepository, SubscriptionReportRepository>();
 builder.Services.AddScoped<ISubscriptionReportService, SubscriptionReportService>();
-// أضف هذه السطور مع بقية تسجيلات الخدمات في ملف Program.cs
+
 builder.Services.AddScoped<IComplaintRepository, ComplaintRepository>();
 builder.Services.AddScoped<IComplaintService, ComplaintService>();
-// تسجيل طبقة الخدمات (Services)
+
 builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 builder.Services.AddHttpClient<GatewayPaymentService>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
@@ -148,11 +148,10 @@ builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IProfilePictureService, ProfilePictureService>();
 builder.Services.AddScoped<ILabAdvertisementService, LabAdvertisementService>();
 builder.Services.AddScoped<ILabAdCreateService, LabAdCreateService>();
-builder.Services.AddScoped<ICaseOrderRepository, CaseOrderRepository>();
-builder.Services.AddScoped<IAdvertisementRepository, AdvertisementRepository>();
 builder.Services.AddScoped<IBillingService, BillingService>();
-builder.Services.AddScoped<IMyFatoorahService, MyFatoorahService>();
+builder.Services.AddHostedService<SubscriptionCheckerService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });
@@ -181,7 +180,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 7. ????? ????? ?????? ?? ??? JWT ?????? ?????? ?????? ??? ??? Query String ????? ???? SignalR Hub
+// 7. إعداد نظام المصادقة عبر الـ JWT وضبط التحقق من التوكن وصلاحيات الـ Query String لمسارات SignalR Hub
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 if (jwtSettings == null || string.IsNullOrWhiteSpace(jwtSettings.Key))
 {
@@ -205,6 +204,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            // 🌟 الإضافة الهامة هنا: التحقق من قاعدة البيانات مع كل طلب لرفض التوكن فوراً إذا تم تعليق الحساب (Suspended)
+            OnTokenValidated = async context =>
+            {
+                var dbContext = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                var userIdClaim = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                                  ?? context.Principal?.FindFirst("sub")?.Value
+                                  ?? context.Principal?.FindFirst("id")?.Value;
+
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    var user = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                    if (user == null || user.Status == AccountStatus.Suspended)
+                    {
+                        context.Fail("تم تعليق هذا الحساب أو انتهى اشتراكه، وتم إنهاء الجلسة.");
+                    }
+                }
+            },
+
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
@@ -214,7 +231,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 if (!string.IsNullOrEmpty(accessToken) &&
                     (path.StartsWithSegments("/notificationHub") ||
                      path.StartsWithSegments("/notifications")))
-
                 {
                     context.Token = accessToken;
                 }
@@ -225,22 +241,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+app.UseSwagger();
 
-    app.UseSwagger();
-
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DentalLab.Api v1");
-        c.RoutePrefix = string.Empty;
-    });
-
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "DentalLab.Api v1");
+    c.RoutePrefix = string.Empty;
+});
 
 app.UseHttpsRedirection();
 
-// ?? [??????? ??????? ??? Middleware] ????? ????? ??? CORS ??? React ??? ??? Auth ???? ????? ??? Pre-flight requests
+// تفعيل إعدادات الـ CORS قبل المصادقة لضمان معالجة Pre-flight requests
 app.UseCors("AllowReactApp");
 
-// ????? ???? ??????? ??????? ???? ????? ??????
+// إعداد مجلد الملفات الثابتة لتحميل الصور والملفات
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
@@ -251,7 +265,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ??? ???? ??? Hub ?????? ????????? ??????? ????? ??? ??? ??? Tokens ??????
+// ربط مسار الـ Hub الخاص بالإشعارات الفورية
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.MapControllers();

@@ -60,5 +60,12 @@ namespace DentalLab.Api.Repositories
                 .Include(l => l.Owner)
                 .ToListAsync();
         }
+        public async Task<int?> GetLabIdByUserIdAsync(int userId)
+        {
+            var lab = await _context.Labs
+                .FirstOrDefaultAsync(l => l.UserId == userId);
+
+            return lab?.Id;
+        }
     }
 }

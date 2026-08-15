@@ -20,4 +20,5 @@ public interface IAccountsRepository
     Task<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash);
     Task<int?> GetLabIdByUserIdAsync(int userId);
     Task<Lab?> GetLabByUserIdAsync(int userId);
+    Task<List<User>> GetPendingPaymentAccountsAsync();
 }

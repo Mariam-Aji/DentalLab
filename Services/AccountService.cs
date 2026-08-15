@@ -413,4 +413,7 @@ public class AccountService : IAccountService
 
         return Path.Combine("uploads", "verification", fileName).Replace("\\", "/");
     }
+    public Task<List<User>> GetPendingPaymentAccountsAsync()
+      => _repo.GetPendingPaymentAccountsAsync();
 }
+

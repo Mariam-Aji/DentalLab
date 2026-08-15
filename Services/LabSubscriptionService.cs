@@ -11,11 +11,10 @@ namespace DentalLab.Api.Services
     public class LabSubscriptionService : ILabSubscriptionService
     {
         private readonly ILabSubscriptionRepository _subscriptionRepository;
-        private readonly IEmailService _emailService; // 🌟 إضافة خدمة البريد الإلكتروني
-
+        private readonly IEmailService _emailService; 
         public LabSubscriptionService(
             ILabSubscriptionRepository subscriptionRepository,
-            IEmailService emailService) // 🌟 حقن الخدمة في Constructor
+            IEmailService emailService) 
         {
             _subscriptionRepository = subscriptionRepository;
             _emailService = emailService;
@@ -51,7 +50,6 @@ namespace DentalLab.Api.Services
             await _subscriptionRepository.AddSubscriptionPaymentAsync(subscriptionPayment);
             await _subscriptionRepository.UpdateLabAndUserAsync(lab, lab.Owner);
 
-            // 🌟 إرسال إيميل التفعيل للمستخدم
             if (!string.IsNullOrEmpty(lab.Owner.Email))
             {
                 var emailSubject = "تفعيل حساب المخبر الخاص بك";
@@ -68,10 +66,7 @@ namespace DentalLab.Api.Services
             var labs = await _subscriptionRepository.GetActiveSubscribedLabsAsync();
             var now = DateTime.UtcNow;
 
-            var activeLabsList = new List<Lab>();
-            var expiredLabsList = new List<Lab>();
-
-            var labLatestPayments = new Dictionary<int, LabSubscriptionPayment>();
+            var activeLabsList = new List<ActiveLabDto>();
 
             foreach (var lab in labs)
             {
@@ -79,60 +74,22 @@ namespace DentalLab.Api.Services
                     .OrderByDescending(p => p.PaidAtUtc)
                     .FirstOrDefault();
 
-                if (latestPayment != null)
+                if (latestPayment != null && latestPayment.PeriodEndUtc > now)
                 {
-                    labLatestPayments[lab.Id] = latestPayment;
-
-                    if (latestPayment.PeriodEndUtc <= now)
+                    activeLabsList.Add(new ActiveLabDto
                     {
-                        if (lab.Owner != null)
-                        {
-                            lab.Owner.Status = AccountStatus.Suspended;
-
-                            var expiryNotification = new Notification
-                            {
-                                RecipientId = lab.UserId,
-                                Type = NotificationType.StatusChanged,
-                                Message = $"مرحباً {lab.Owner.Name}، نود إعلامك بأن مدة اشتراك المخبر الخاص بك قد انتهت بحسب سجلات السداد، وتم تعليق الحساب مؤقتاً.",
-                                CreatedAt = now,
-                                IsRead = false
-                            };
-
-                            lab.Owner.Notifications.Add(expiryNotification);
-                        }
-                        expiredLabsList.Add(lab);
-                    }
-                    else
-                    {
-                        activeLabsList.Add(lab);
-                    }
-                }
-                else
-                {
-                    expiredLabsList.Add(lab);
+                        LabId = lab.Id,
+                        LabName = lab.Owner?.Name ?? "مخبر غير مسمى",
+                        Email = lab.Owner?.Email ?? string.Empty,
+                        SubscriptionStartUtc = latestPayment.PeriodStartUtc,
+                        SubscriptionEndUtc = latestPayment.PeriodEndUtc,
+                        RemainingDays = (latestPayment.PeriodEndUtc - now).Days
+                    });
                 }
             }
 
-            if (expiredLabsList.Any())
-            {
-                await _subscriptionRepository.UpdateLabsRangeAsync(expiredLabsList);
-            }
-
-            return activeLabsList.Select(l =>
-            {
-                var payment = labLatestPayments[l.Id];
-                return new ActiveLabDto
-                {
-                    LabId = l.Id,
-                    LabName = l.Owner?.Name ?? "مخبر غير مسمى",
-                    Email = l.Owner?.Email ?? string.Empty,
-                    SubscriptionStartUtc = payment.PeriodStartUtc,
-                    SubscriptionEndUtc = payment.PeriodEndUtc,
-                    RemainingDays = (payment.PeriodEndUtc - now).Days
-                };
-            });
+            return activeLabsList;
         }
-
         public async Task<(bool Success, string Message)> UpdateSubscriptionInfoAsync(int labId, UpdateSubscriptionDto dto)
         {
             var lab = await _subscriptionRepository.GetLabWithUserAsync(labId);
@@ -179,7 +136,6 @@ namespace DentalLab.Api.Services
             await _subscriptionRepository.AddSubscriptionPaymentAsync(newRenewalPayment);
             await _subscriptionRepository.UpdateLabAndUserAsync(lab, lab.Owner);
 
-            // 🌟 إرسال إيميل التجديد وإعادة التفعيل للمستخدم
             if (!string.IsNullOrEmpty(lab.Owner.Email))
             {
                 var emailSubject = "تجديد اشتراك وتفعيل حساب المخبر";
@@ -212,6 +168,18 @@ namespace DentalLab.Api.Services
                     RemainingDays = latestPayment != null ? (latestPayment.PeriodEndUtc - now).Days : (l.SubscriptionEndUtc.HasValue ? (l.SubscriptionEndUtc.Value - now).Days : 0)
                 };
             });
+        }
+        public async Task<bool> UpdateAllSubscriptionsAmountAsync(decimal newAmount)
+        {
+            try
+            {
+                int affectedRows = await _subscriptionRepository.UpdateAllSubscriptionAmountsAsync(newAmount);
+                return affectedRows > 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }

@@ -16,17 +16,17 @@ public class PaymentRepository : IPaymentRepository
     public async Task<CaseOrder?> GetOrderWithUserAndLabAsync(int orderId)
     {
         return await _context.CaseOrders
-            .Include(o => o.CreatedBy)      // الطبيب الدافع
-            .Include(o => o.AssignedLab)    // المخبر المستلم
+            .Include(o => o.CreatedBy)     
+            .Include(o => o.AssignedLab)    
             .FirstOrDefaultAsync(o => o.Id == orderId);
     }
 
     public async Task<CaseOrder?> UpdateOrderPaymentStatusAsync(int orderId, decimal paidAmount, bool isPaid)
     {
         var order = await _context.CaseOrders
-            .Include(o => o.CreatedBy)                     // الطبيب الدافع
-            .Include(o => o.AssignedLab)                   // ملف المخبر المسند
-                .ThenInclude(l => l!.Owner)                // مالك المخبر من جدول Users
+            .Include(o => o.CreatedBy)                     
+            .Include(o => o.AssignedLab)                  
+                .ThenInclude(l => l!.Owner)               
             .FirstOrDefaultAsync(o => o.Id == orderId);
 
         if (order == null) return null;
@@ -62,6 +62,7 @@ public class PaymentRepository : IPaymentRepository
         if (isPaid)
         {
             ad.PaidAt = DateTime.UtcNow;
+            ad.IsActive = true;
         }
 
         _context.Advertisements.Update(ad);

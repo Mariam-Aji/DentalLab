@@ -87,4 +87,12 @@ public class AccountsRepository : IAccountsRepository, IAdminAccountsRepository
             .Where(u => u.Role == UserRole.Lab && u.Status == AccountStatus.PendingAdminApproval)
             .OrderBy(u => u.CreatedAt)
             .ToListAsync();
+    public async Task<List<User>> GetPendingPaymentAccountsAsync()
+    {
+        return await _db.Users
+            .Include(u => u.LabProfile)
+            .Where(u => u.Status == AccountStatus.PendingPayment)
+            .AsNoTracking()
+            .ToListAsync();
+    }
 }

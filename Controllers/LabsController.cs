@@ -77,6 +77,18 @@ namespace DentalLab.Api.Controllers
                 data = labs
             });
         }
-    
-}
+        [HttpGet("get-lab-id/{userId:int}")]
+        public async Task<IActionResult> GetLabId(int userId)
+        {
+            var labId = await _labService.GetLabIdByUserIdAsync(userId);
+
+            if (labId == null)
+            {
+                return NotFound(new { message = "لا يوجد مخبر مرتبط بمعرف المستخدم هذا." });
+            }
+
+            return Ok(new { userId = userId, labId = labId });
+        }
+
+    }
 }

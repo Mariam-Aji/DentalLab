@@ -99,5 +99,17 @@ namespace DentalLab.Api.Repositories
                             l.SubscriptionPayments.Max(p => (DateTime?)p.PeriodEndUtc) <= now)
                 .ToListAsync();
         }
+        public async Task<int> UpdateAllSubscriptionAmountsAsync(decimal newAmount)
+        {
+            var payments = await _context.LabSubscriptionPayments.ToListAsync();
 
+            if (!payments.Any()) return 0;
+
+            foreach (var payment in payments)
+            {
+                payment.Amount = newAmount;
+            }
+
+            return await _context.SaveChangesAsync();
+        }
     } }

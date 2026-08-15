@@ -2,6 +2,7 @@ using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DentalLab.Api.Controllers;
 
@@ -11,10 +12,13 @@ namespace DentalLab.Api.Controllers;
 public class AdminAccountsController : ControllerBase
 {
     private readonly IAdminAccountService _accountService;
-
-    public AdminAccountsController(IAdminAccountService accountService)
-        {
-            _accountService = accountService;
+    private readonly IAccountService _accountServ; 
+    public AdminAccountsController(
+        IAdminAccountService accountService,
+        IAccountService accountServ)
+    {
+        _accountService = accountService;
+        _accountServ = accountServ;
     }
 
     [HttpGet("dentists/pending-approval")]
@@ -81,9 +85,9 @@ public class AdminAccountsController : ControllerBase
             user.AddressPlace,
             user.CityPlace,
             user.CountryPlace,
-                user.Role,
-                user.Status,
-                user.VerificationDocumentPath,
+            user.Role,
+            user.Status,
+            user.VerificationDocumentPath,
             user.CreatedAt
         });
 
@@ -91,12 +95,12 @@ public class AdminAccountsController : ControllerBase
     }
 
     [HttpPut("labs/{id:int}/approve")]
-    public async Task<IActionResult> ApproveLab(int id)
+    public async Task<IActionResult> ApproveLab(int id, [FromForm] ApproveLabRequest request)
     {
-        var error = await _accountService.ApproveLabAsync(id);
+        var error = await _accountService.ApproveLabAsync(id, request.SubscriptionAmount);
         if (error != null) return BadRequest(error);
 
-        return Ok(new { UserId = id, Status = "Active" });
+        return Ok(new { UserId = id, Status = "Active", MonthlyAmount = request.SubscriptionAmount });
     }
 
     [HttpPut("labs/{id:int}/reject")]
@@ -115,5 +119,37 @@ public class AdminAccountsController : ControllerBase
         if (error != null) return BadRequest(error);
 
         return Ok(new { UserId = id, Status = "Suspended" });
+    }
+
+    [HttpGet("pending-payment")]
+    public async Task<IActionResult> GetPendingPaymentAccounts()
+    {
+        var accounts = await _accountServ.GetPendingPaymentAccountsAsync();
+
+        if (accounts == null || !accounts.Any())
+        {
+            return NotFound(new
+            {
+                message = "no pending payment accounts found."
+            });
+        }
+
+        var result = accounts.Select(user => new
+        {
+            user.Id,
+            user.Name,
+            user.Email,
+            user.Phone,
+            user.NamePlace,
+            user.AddressPlace,
+            user.CityPlace,
+            user.CountryPlace,
+            user.Role,
+            user.Status,
+            user.VerificationDocumentPath,
+            user.CreatedAt
+        });
+
+        return Ok(result);
     }
 }

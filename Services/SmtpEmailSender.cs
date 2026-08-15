@@ -22,7 +22,19 @@ public class SmtpEmailSender : IEmailSender
             Credentials = new NetworkCredential(_settings.Username, _settings.Password)
         };
 
-        using var message = new MailMessage(_settings.From, toEmail, subject, body);
+        // ?? ????? ????? ??????? DentalLab Platform ????? ?????? ?????????? ??????
+        var fromMailAddress = new MailAddress(_settings.From, "DentalLab Platform");
+
+        using var message = new MailMessage
+        {
+            From = fromMailAddress,
+            Subject = subject,
+            Body = body,
+            IsBodyHtml = true
+        };
+
+        message.To.Add(toEmail);
+
         await client.SendMailAsync(message);
     }
 }

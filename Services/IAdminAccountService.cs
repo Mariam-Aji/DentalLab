@@ -9,7 +9,7 @@ public interface IAdminAccountService
     Task<string?> RejectDentistAsync(int id);
     Task<string?> SuspendDentistAsync(int id);
     Task<List<User>> GetPendingLabApprovalsAsync();
-    Task<string?> ApproveLabAsync(int id);
+    Task<string?> ApproveLabAsync(int id, decimal amount);
     Task<string?> RejectLabAsync(int id);
     Task<string?> SuspendLabAsync(int id);
 }

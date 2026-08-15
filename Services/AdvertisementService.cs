@@ -107,8 +107,9 @@ public class AdvertisementService : IAdvertisementService
                 UserId = userId,
                 Price = dto.Price,
                 IsActive = true,
-                IsPaid = dto.Price.HasValue && dto.Price.Value > 0 ? false : true, // إذا وُضع سعر، قد ترغب بأن يكون معلقاً حتى يدفع، أو افتراضياً حسب نظامك
-                CreatedAt = DateTime.UtcNow
+                IsPaid = true,                      
+                CreatedAt = DateTime.UtcNow,
+                PaidAt = DateTime.UtcNow           
             };
 
             var savedAdv = await _advRepo.SaveAdvertisementAsync(advertisement);

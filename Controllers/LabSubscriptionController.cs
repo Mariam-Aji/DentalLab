@@ -83,5 +83,26 @@ namespace DentalLab.Api.Controllers
 
             return Ok(expiredLabs);
         }
+        [HttpPut("update-all-amounts")]
+        public async Task<IActionResult> UpdateAllSubscriptionAmounts([FromForm] decimal newAmount)
+        {
+            if (newAmount < 0)
+            {
+                return BadRequest(new { message = "قيمة المبلغ غير صالحة." });
+            }
+
+            bool isUpdated = await _subscriptionService.UpdateAllSubscriptionsAmountAsync(newAmount);
+
+            if (!isUpdated)
+            {
+                return NotFound(new { message = "لا توجد سجلات اشتراكات لتحديثها أو حدث خطأ أثناء التحديث." });
+            }
+
+            return Ok(new
+            {
+                message = "تم تحديث قيمة الـ Amount بنجاح لجميع المشتركين.",
+                newAmount = newAmount
+            });
+        }
     }
 }

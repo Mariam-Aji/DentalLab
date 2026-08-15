@@ -3,8 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace DentalLab.Api.Models;
 
 public enum UserRole { Dentist, Lab, Admin,ADSClient }
-public enum AccountStatus { PendingVerification, PendingAdminApproval, Active, ReadOnly, Suspended }
-
+public enum AccountStatus { PendingVerification, PendingAdminApproval, PendingPayment, Active, ReadOnly, Suspended }
 public class User
 {
     [Key]

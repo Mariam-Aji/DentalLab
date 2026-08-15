@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -37,7 +38,10 @@ public class SearchService : ISearchService
             YearsOfExperience = l.YearsOfExperience,
             Specialties = l.Specialties,
             Materials = l.Materials,
-            AverageRating = l.AverageRating,
+
+            // 🌟 تحويل التقييم إلى float صراحةً
+            AverageRating = (float)l.AverageRating,
+
             HasScanVisitService = l.HasScanVisitService,
 
             // حالة التوفر والاتصال العامة
