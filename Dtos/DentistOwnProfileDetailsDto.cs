@@ -7,5 +7,6 @@
         public string? Phone { get; set; }
         public string? CityPlace { get; set; }
         public string? ProfilePictureUrl { get; set; }
+        public string Name { get; set; } = null!;
     }
 }

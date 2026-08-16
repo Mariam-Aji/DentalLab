@@ -61,15 +61,10 @@ public class CaseOrderRepository : ICaseOrderRepository
         return await _context.LabPrices
             .FirstOrDefaultAsync(x => x.LabId == labId && x.CompensationType == type);
     }
-    public async Task<bool> AddPatientAndBindToOrderAsync(CaseOrder order, Patient patient)
+    public async Task AddPatientFilesAsync(List<FileResource> files)
     {
-        await _context.Patients.AddAsync(patient);
-        await _context.SaveChangesAsync(); 
-
-        order.PatientId = patient.Id;
-        _context.CaseOrders.Update(order);
-
-        return await _context.SaveChangesAsync() > 0;
+        await _context.FileResources.AddRangeAsync(files);
+        await _context.SaveChangesAsync();
     }
     public async Task<List<Patient>> GetAllPatientsAsync()
     {
@@ -457,6 +452,16 @@ public class CaseOrderRepository : ICaseOrderRepository
             .Where(o => o.PatientId != null) // جلب الطلبيات المربوطة بمريض فقط
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
+    }
+    public async Task<bool> AddPatientAndBindToOrderAsync(CaseOrder order, Patient patient)
+    {
+        await _context.Patients.AddAsync(patient);
+        await _context.SaveChangesAsync();
+
+        order.PatientId = patient.Id;
+        _context.CaseOrders.Update(order);
+
+        return await _context.SaveChangesAsync() > 0;
     }
 }
     

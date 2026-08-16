@@ -13,6 +13,8 @@ namespace DentalLab.Api.Dtos
         public string? ClinicalNotes { get; set; }
 
         public List<string> ProcessedTeeth { get; set; } = new();
+        public List<IFormFile>? Photos { get; set; }
+        public List<PatientFileResponseDto>? UploadedFiles { get; set; }
         //
     }
 }

@@ -12,10 +12,12 @@ namespace DentalLab.Api.Controllers;
 public class CaseOrdersController : ControllerBase
 {
     private readonly ICaseOrderService _service;
+    private readonly IWebHostEnvironment _env;
 
-    public CaseOrdersController(ICaseOrderService service)
+    public CaseOrdersController(ICaseOrderService service, IWebHostEnvironment env)
     {
         _service = service;
+        _env = env;
     }
 
     [HttpPost("initiate/{labId}")]
@@ -97,7 +99,8 @@ public class CaseOrdersController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var (result, error) = await _service.AddPatientToCaseOrderAsync(caseOrderId, patientDto);
+        // 🌟 تمرير الـ _env مع البارامترات
+        var (result, error) = await _service.AddPatientToCaseOrderAsync(caseOrderId, patientDto, _env);
 
         if (error != null)
         {

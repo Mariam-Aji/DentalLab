@@ -249,7 +249,7 @@ namespace DentalLab.Api.Services
             return invoice;
         }
 
-        public async Task<(CreatePatientDto? result, string? error)> AddPatientToCaseOrderAsync(int caseOrderId, CreatePatientDto patientDto)
+        public async Task<(CreatePatientDto? result, string? error)> AddPatientToCaseOrderAsync(int caseOrderId, CreatePatientDto patientDto, IWebHostEnvironment env)
         {
             var caseOrder = await _repo.GetOrderByIdAsync(caseOrderId);
             if (caseOrder == null)
@@ -266,14 +266,69 @@ namespace DentalLab.Api.Services
             };
 
             var success = await _repo.AddPatientAndBindToOrderAsync(caseOrder, newPatient);
-
             if (!success)
             {
-                return (null, "فشل في حفظ البيانات بقاعدة البيانات.");
+                return (null, "فشل في حفظ بيانات المريض بقاعدة البيانات.");
             }
 
-            patientDto.PatientId = newPatient.Id; 
-            patientDto.CaseOrderId = caseOrderId;  
+            var uploadedFileDtos = new List<PatientFileResponseDto>();
+
+            // 🌟 التحقق من وجود مجموعة صور ومعالجتها تكرارياً
+            if (patientDto.Photos != null && patientDto.Photos.Any())
+            {
+                var fileResources = new List<FileResource>();
+                var uploadsRoot = Path.Combine(env.ContentRootPath, "uploads", "patients", newPatient.Id.ToString());
+                Directory.CreateDirectory(uploadsRoot);
+
+                foreach (var photo in patientDto.Photos)
+                {
+                    if (photo.Length > 0)
+                    {
+                        var ext = Path.GetExtension(photo.FileName).ToLowerInvariant();
+                        var allowed = new[] { ".jpg", ".jpeg", ".png", ".stl" }; // أضف الامتدادات المسموحة
+                        if (!allowed.Contains(ext)) continue;
+
+                        var fileName = $"{Guid.NewGuid():N}{ext}";
+                        var fullPath = Path.Combine(uploadsRoot, fileName);
+
+                        await using (var stream = new FileStream(fullPath, FileMode.Create))
+                        {
+                            await photo.CopyToAsync(stream);
+                        }
+
+                        var relativePath = Path.Combine("uploads", "patients", newPatient.Id.ToString(), fileName).Replace("\\", "/");
+
+                        // إضافة كل صورة للقائمة مع تحديد نوعها
+                        fileResources.Add(new FileResource
+                        {
+                            Path = relativePath,
+                            Type = FileType.PhotoBefore, // 👈 نوع الصورة مخزن كـ "صور قبل"
+                            PatientId = newPatient.Id
+                        });
+                    }
+                }
+
+                // حفظ جميع الصور دفعة واحدة في قاعدة البيانات
+                if (fileResources.Any())
+                {
+                    await _repo.AddPatientFilesAsync(fileResources);
+
+                    foreach (var file in fileResources)
+                    {
+                        uploadedFileDtos.Add(new PatientFileResponseDto
+                        {
+                            FileId = file.Id,
+                            Path = file.Path,
+                            FileType = file.Type.ToString() // ستظهر كـ "PhotoBefore"
+                        });
+                    }
+                }
+            }
+
+            patientDto.PatientId = newPatient.Id;
+            patientDto.CaseOrderId = caseOrderId;
+            patientDto.Photos = null; // إخفاء ملفات الـ IFormFile الخام
+            patientDto.UploadedFiles = uploadedFileDtos; // إظهار المسارات وأنواعها فقط
 
             return (patientDto, null);
         }
@@ -766,18 +821,24 @@ namespace DentalLab.Api.Services
 
             return new DentistOwnProfileDetailsDto
             {
-                DentistId = user.Id, // 👈 إرجاع المعرّف في الريسبونس
+                DentistId = user.Id,
+                Name = user.Name, // 👈 تعيين اسم الطبيب المجلوب من جدول المستخدمين
                 Email = user.Email,
                 Phone = user.Phone,
                 CityPlace = user.CityPlace,
                 ProfilePictureUrl = user.ProfilePictureUrl
             };
         }
-
         public async Task<(DentistOwnProfileDetailsDto? Profile, string? Error)> ModifyDentistPersonalProfileAsync(int userId, EditDentistOwnProfileDto dto)
         {
             var user = await _repo.GetUserByIdAsync(userId);
             if (user == null) return (null, "المستخدم غير موجود.");
+
+            // 🌟 تحديث الاسم إذا تم إرساله ولم يكن فارغاً
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                user.Name = dto.Name;
+            }
 
             if (dto.Phone != null) user.Phone = dto.Phone;
             if (dto.CityPlace != null) user.CityPlace = dto.CityPlace;
@@ -820,7 +881,8 @@ namespace DentalLab.Api.Services
 
             var updatedProfile = new DentistOwnProfileDetailsDto
             {
-                DentistId = user.Id, // 👈 إرجاع المعرّف هنا أيضاً بعد التعديل
+                DentistId = user.Id,
+                Name = user.Name, // 👈 إرجاع الاسم المحدث في الاستجابة
                 Email = user.Email,
                 Phone = user.Phone,
                 CityPlace = user.CityPlace,

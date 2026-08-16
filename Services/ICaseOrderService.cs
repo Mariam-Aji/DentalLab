@@ -15,8 +15,7 @@ namespace DentalLab.Api.Services
       int dentistId);
         Task<CaseOrderInvoiceDto> GetOrderInvoiceAsync(int orderId);
 
-        Task<(CreatePatientDto? result, string? error)> AddPatientToCaseOrderAsync(int caseOrderId, CreatePatientDto patientDto);
-        Task<List<CreatePatientDto>> GetAllPatientsAsync();
+        Task<(CreatePatientDto? result, string? error)> AddPatientToCaseOrderAsync(int caseOrderId, CreatePatientDto patientDto, IWebHostEnvironment env); Task<List<CreatePatientDto>> GetAllPatientsAsync();
         Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId);
         Task<(object? result, string? error)> UpdatePatientDetailsAsync(int patientId, UpdatePatientDto dto, int dentistId);
         Task<List<CaseOrderDetailDto>> GetAllOrdersWithDetailsAsync();

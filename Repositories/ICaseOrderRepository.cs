@@ -21,6 +21,7 @@ public interface ICaseOrderRepository
     Task<List<CaseOrderDetailDto>> GetAllCaseOrdersWithDetailsAsync();
     Task<bool> AddCaseOrderItemsRangeAsync(List<CaseOrderItem> items);
     //
+    Task AddPatientFilesAsync(List<FileResource> files);
     Task SaveNotificationAsync(Notification notification);
     Task<bool> DeleteOrderAsync(CaseOrder order);
     Task<Lab?> GetLabByIdAsync(int labId);
