@@ -339,14 +339,23 @@ namespace DentalLab.Api.Services
             return patients.Select(p => new CreatePatientDto
             {
                 PatientId = p.Id,
-                CaseOrderId = 0, 
+                CaseOrderId = 0,
                 FullName = p.FullName,
                 Age = p.Age,
                 ClinicalNotes = p.ClinicalNotes,
-                ProcessedTeeth = p.ProcessedTeeth
+                ProcessedTeeth = p.ProcessedTeeth ?? new List<string>(),
+
+                // 👈 استخدام p.Files بدلاً من p.FileResources
+                UploadedFiles = p.Files?
+                    .Select(f => new PatientFileResponseDto
+                    {
+                        FileId = f.Id,
+                        Path = f.Path,
+                        FileType = f.Type.ToString() // ستظهر نوع الملف (مثلاً PhotoBefore, XRay, إلخ)
+                    }).ToList() ?? new List<PatientFileResponseDto>()
             }).ToList();
         }
-//
+        //
         public async Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId)
         {
             var caseOrder = await _repo.GetOrderByIdAsync(caseOrderId);

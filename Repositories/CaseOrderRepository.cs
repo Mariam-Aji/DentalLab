@@ -68,9 +68,10 @@ public class CaseOrderRepository : ICaseOrderRepository
     }
     public async Task<List<Patient>> GetAllPatientsAsync()
     {
-        return await _context.Patients.ToListAsync();
+        return await _context.Patients
+            .Include(p => p.Files) // 👈 تم التعديل من FileResources إلى Files
+            .ToListAsync();
     }
-
     public async Task<Patient?> GetPatientByIdAsync(int patientId)
     {
         return await _context.Patients.FirstOrDefaultAsync(p => p.Id == patientId);
