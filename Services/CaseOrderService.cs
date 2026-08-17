@@ -346,7 +346,7 @@ namespace DentalLab.Api.Services
                 ProcessedTeeth = p.ProcessedTeeth
             }).ToList();
         }
-
+//
         public async Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId)
         {
             var caseOrder = await _repo.GetOrderByIdAsync(caseOrderId);
