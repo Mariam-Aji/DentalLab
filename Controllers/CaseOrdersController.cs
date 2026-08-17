@@ -8,7 +8,7 @@ namespace DentalLab.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Dentist,Admin")]
+//[Authorize(Roles = "Dentist,Admin")]
 public class CaseOrdersController : ControllerBase
 {
     private readonly ICaseOrderService _service;
