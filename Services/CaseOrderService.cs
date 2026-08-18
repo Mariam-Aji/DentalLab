@@ -355,6 +355,7 @@ namespace DentalLab.Api.Services
                     }).ToList() ?? new List<PatientFileResponseDto>()
             }).ToList();
         }
+
         //
         public async Task<object> BindExistingPatientToOrderAsync(int caseOrderId, int patientId)
         {

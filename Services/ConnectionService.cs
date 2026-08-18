@@ -1,20 +1,28 @@
-﻿using DentalLab.Api.Models;
+﻿//using DentalLab.Api.Hubs;
+using DentalLab.Api.Models;
+using Microsoft.AspNetCore.SignalR;
 using System;
+using System.Threading.Tasks;
 
 namespace DentalLab.Api.Services
 {
     public class ConnectionService : IConnectionService
     {
         private readonly IConnectionRepository _connectionRepository;
+        private readonly IHubContext<NotificationHub> _hubContext; 
 
-        public ConnectionService(IConnectionRepository connectionRepository)
+        public ConnectionService(
+            IConnectionRepository connectionRepository,
+            IHubContext<NotificationHub> hubContext)
         {
             _connectionRepository = connectionRepository;
+            _hubContext = hubContext;
         }
 
         public async Task<string> SendFollowRequestAsync(int dentistId, string userRole, int labId)
         {
-            if (userRole != "Dentist") return "صلاحية غير كافية: فقط الأطباء يمكنهم إرسال طلبات المتابعة.";
+            if (userRole != "Dentist")
+                return "صلاحية غير كافية: فقط الأطباء يمكنهم إرسال طلبات المتابعة.";
 
             if (!await _connectionRepository.LabExistsAsync(labId))
             {
@@ -41,16 +49,26 @@ namespace DentalLab.Api.Services
                 var labOwnerUserId = await _connectionRepository.GetLabOwnerUserIdAsync(labId);
                 if (labOwnerUserId != null)
                 {
+                    var notificationMessage = "لديك طلب متابعة اتصال جديد من أحد الأطباء، يرجى مراجعته وقبوله.";
+
                     var notification = new Notification
                     {
                         RecipientId = labOwnerUserId.Value,
-                        Type = NotificationType.InfoRequested, 
-                        Message = "لديك طلب متابعة اتصال جديد من أحد الأطباء، يرجى مراجعته وقبوله.",
-                      
+                        Type = NotificationType.InfoRequested,
+                        Message = notificationMessage,
                         CreatedAt = DateTime.UtcNow
                     };
 
                     await _connectionRepository.AddNotificationAsync(notification);
+
+                    await _hubContext.Clients.User(labOwnerUserId.Value.ToString())
+                        .SendAsync("ReceiveNotification", new
+                        {
+                            notification.Id,
+                            notification.Message,
+                            notification.Type,
+                            notification.CreatedAt
+                        });
                 }
             }
 
@@ -59,5 +77,4 @@ namespace DentalLab.Api.Services
                 : "فشل في تنفيذ العملية.";
         }
     }
-    //
 }
