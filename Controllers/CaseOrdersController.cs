@@ -362,6 +362,32 @@ public class CaseOrdersController : ControllerBase
             data = orders
         });
     }
+    [HttpPost("{orderId}/send-notification-to-lab/{labId}")]
+    public async Task<IActionResult> SendOrderDetailsNotification(int orderId, int labId)
+    {
+        try
+        {
+            var dentistClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(dentistClaim) || !int.TryParse(dentistClaim, out int dentistId))
+            {
+                return Unauthorized(new { message = "غير مصرح لك، أو الـ Token غير صالح." });
+            }
+
+            // تنفيذ التابع
+            var resultMessage = await _service.SendFullOrderNotificationToLabAsync(orderId, labId, dentistId);
+
+            if (resultMessage.Contains("غير موجودة") || resultMessage.Contains("لا تخص هذا") || resultMessage.Contains("غير مرسلة") || resultMessage.Contains("لم يتم العثور"))
+            {
+                return BadRequest(new { message = resultMessage });
+            }
+
+            return Ok(new { message = resultMessage });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "حدث خطأ داخلي في الخادم.", details = ex.Message });
+        }
+    }
 }
 
     

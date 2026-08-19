@@ -970,5 +970,88 @@ namespace DentalLab.Api.Services
                 LabName = o.AssignedLab?.Description ?? (o.AssignedLabId.HasValue ? $"Lab #{o.AssignedLabId}" : null)
             }).ToList();
         }
+        public async Task<string> SendFullOrderNotificationToLabAsync(int orderId, int labId, int dentistId)
+        {
+            // 1. جلب الطلبية مع تفاصيلها وعلاقاتها (بما فيها المخبر وصاحبه إن وُجد في الـ Include)
+            var order = await _repo.GetOrderWithDetailsAsync(orderId);
+
+            if (order == null)
+                return "الطلبية غير موجودة.";
+
+            if (order.CreatedById != dentistId)
+                return "هذه الطلبية لا تخص هذا الطبيب.";
+
+            if (order.AssignedLabId != labId)
+                return "هذه الطلبية غير مرسلة لهذا المخبر.";
+
+            // 2. الحصول على معرف المستخدم الخاص بالمخبر مباشرة من علاقة الـ AssignedLab
+            // (تأكد أن جدول Lab يحتوي على حقل UserId أو أن العلاقة تضم المستخدم المرتبط بالمخبر)
+            int? labOwnerUserId = order.AssignedLab?.UserId; // إذا كان حقل UserId موجوداً في جدول Lab
+
+            if (labOwnerUserId == null)
+            {
+                // إذا لم يكن مخزناً مباشرة، يمكنك جلبه عبر استعلام من المستودع باستخدام الـ labId
+                labOwnerUserId = await _repo.GetLabOwnerUserIdAsync(labId);
+            }
+
+            if (labOwnerUserId == null)
+                return "لم يتم العثور على حساب مستخدم مرتبط بهذا المخبر.";
+
+            // 3. بناء نص الإشعار
+            var notificationMessage = $"تلقيت تفاصيل الطلبية الشاملة رقم #{order.Id} ('{order.Title}') من الطبيب.";
+
+            var notification = new Notification
+            {
+                RecipientId = labOwnerUserId.Value,
+                Type = NotificationType.InfoRequested,
+                Message = notificationMessage,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // حفظ الإشعار في قاعدة البيانات (يمكنك استخدام _repo لحفظه)
+            await _repo.AddNotificationAsync(notification);
+
+            // 4. تجهيز بيانات الطلبية الكاملة لإرسالها عبر SignalR
+            var notificationPayload = new
+            {
+                notification.Id,
+                notification.Message,
+                notification.Type,
+                notification.CreatedAt,
+                OrderDetails = new
+                {
+                    order.Id,
+                    order.Title,
+                    order.Status,
+                    order.ImpressionStage,
+                    order.ImpressionType,
+                    order.Shade,
+                    order.IsTemporary,
+                    order.IsUrgent,
+                    order.DeliveryDate,
+                    order.Notes,
+                    order.HasAccessories,
+                    order.RequiredImages,
+                    order.EstimatedPrice,
+                    order.FinalPrice,
+                    order.IsPaid,
+                    order.PaidAt,
+                    order.CreatedAt,
+                    Items = order.Items.Select(item => new
+                    {
+                        item.Id,
+                        item.CompensationType,
+                        item.ToothNumbers
+                    }),
+                    order.PatientId
+                }
+            };
+
+            // 5. إرسال الإشعار عبر SignalR حصراً للمخبر المستهدف
+            await _hubContext.Clients.User(labOwnerUserId.Value.ToString())
+                .SendAsync("ReceiveOrderNotification", notificationPayload);
+
+            return "تم إرسال إشعار تفاصيل الطلبية للمخبر بنجاح.";
+        }
     }
 }

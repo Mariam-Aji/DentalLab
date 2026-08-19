@@ -9,7 +9,7 @@ namespace DentalLab.Api.Services
     public class ConnectionService : IConnectionService
     {
         private readonly IConnectionRepository _connectionRepository;
-        private readonly IHubContext<NotificationHub> _hubContext; 
+        private readonly IHubContext<NotificationHub> _hubContext;
 
         public ConnectionService(
             IConnectionRepository connectionRepository,
@@ -46,7 +46,9 @@ namespace DentalLab.Api.Services
 
             if (success)
             {
+                // 1. جلب معرف مستخدم المخبر
                 var labOwnerUserId = await _connectionRepository.GetLabOwnerUserIdAsync(labId);
+
                 if (labOwnerUserId != null)
                 {
                     var notificationMessage = "لديك طلب متابعة اتصال جديد من أحد الأطباء، يرجى مراجعته وقبوله.";
@@ -59,16 +61,30 @@ namespace DentalLab.Api.Services
                         CreatedAt = DateTime.UtcNow
                     };
 
+                    // حفظ الإشعار في قاعدة البيانات
                     await _connectionRepository.AddNotificationAsync(notification);
 
-                    await _hubContext.Clients.User(labOwnerUserId.Value.ToString())
-                        .SendAsync("ReceiveNotification", new
+                    // 2. تجهيز الحمولة (Payload)
+                    var notificationPayload = new
+                    {
+                        notification.Id,
+                        notification.Message,
+                        notification.Type,
+                        notification.CreatedAt,
+                        RequestDetails = new // إضافة تفاصيل الطلب ليكون الإشعار مفيداً
                         {
-                            notification.Id,
-                            notification.Message,
-                            notification.Type,
-                            notification.CreatedAt
-                        });
+                            request.FromDentistId,
+                            request.ToLabId,
+                            request.Status,
+                            request.CreatedAt
+                        }
+                    };
+
+                    // 3. 🌟 التأكد من اسم الحدث: 
+                    // إذا كنتِ تستخدمين في الـ Client الحدث "ReceiveOrderNotification" فهو سيعمل، 
+                    // لكن يفضل تسميته "ReceiveNotification" أو "ReceiveFollowRequest" ليكون أدق.
+                    await _hubContext.Clients.User(labOwnerUserId.Value.ToString())
+                        .SendAsync("ReceiveOrderNotification", notificationPayload);
                 }
             }
 

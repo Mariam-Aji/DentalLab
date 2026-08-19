@@ -31,6 +31,7 @@ namespace DentalLab.Api.Services
         Task<List<CaseStatusCountChartDto>> GetCaseStatusChartDataAsync();
         Task<List<PatientCaseOrderDto>> GetOrdersByPatientIdAsync(int patientId);
         Task<List<PatientCaseOrderDto>> GetOrdersWithPatientsAsync();
+        Task<string> SendFullOrderNotificationToLabAsync(int orderId, int labId, int dentistId);
     }
 }
 //

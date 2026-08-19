@@ -442,6 +442,18 @@ namespace DentalLab.Api.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+        [HttpDelete("admin/delete-post/{postId}")]
+        [Authorize(Roles = "Admin")] // التأكد من أن الصلاحية للأدمن فقط
+        public async Task<IActionResult> DeletePostByAdmin(int postId)
+        {
+            var (success, error) = await _blogService.DeletePostByAdminAsync(postId);
+            if (!success)
+            {
+                return BadRequest(new { message = error });
+            }
+
+            return Ok(new { message = "تم حذف المنشور بواسطة الأدمن بنجاح وإرسال الإشعار للمستخدم." });
+        }
     }
 
 }

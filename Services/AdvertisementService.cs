@@ -2,6 +2,7 @@
 using DentalLab.Api.Models;
 using DentalLab.Api.Repositories;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -17,11 +18,13 @@ public class AdvertisementService : IAdvertisementService
 {
     private readonly IAdvertisementRepository _advRepo;
     private readonly IWebHostEnvironment _env;
+    private readonly IHubContext<NotificationHub> _hubContext; // أضف هذا الحقن في الـ Constructor إذا لم يكن موجوداً
 
-    public AdvertisementService(IAdvertisementRepository advRepo, IWebHostEnvironment env)
+    public AdvertisementService(IAdvertisementRepository advRepo, IWebHostEnvironment env, IHubContext<NotificationHub> hubContext)
     {
         _advRepo = advRepo;
         _env = env;
+        _hubContext = hubContext;
     }
 
     public async Task<(User? result, string? error)> CreateADSClientByAdminAsync(CreateADSClientDto dto)
@@ -375,7 +378,7 @@ var jsonOptions = new JsonSerializerOptions
             return (null, ex.InnerException != null ? ex.InnerException.Message : ex.Message);
         }
     }
-    public async Task<(bool isActivated, string? errorMessage)> ActivateDoctorAdvertisementAsync(int advertisementId, int userId, decimal price)
+    public async Task<(bool isActivated, string? errorMessage)> ActivateLabAdvertisementAsync(int advertisementId, int userId, decimal price)
     {
         var advertisement = await _advRepo.GetByIdAsync(advertisementId);
         if (advertisement == null)
@@ -385,10 +388,10 @@ var jsonOptions = new JsonSerializerOptions
 
         if (advertisement.UserId != userId)
         {
-            return (false, "هذا الإعلان لا ينتمي للطبيب الممرر المعرف الخاص به.");
+            return (false, "هذا الإعلان لا ينتمي للمخبر الممرر المعرف الخاص به.");
         }
 
-        if (advertisement.IsActive)
+        if (advertisement.IsActive && advertisement.IsPaid)
         {
             return (false, "هذا الإعلان نشط بالفعل ومقبول سابقاً في النظام.");
         }
@@ -405,20 +408,51 @@ var jsonOptions = new JsonSerializerOptions
 
         try
         {
-            var doctorNotification = new Notification
+            var responseImages = !string.IsNullOrEmpty(advertisement.ImageUrl)
+                ? advertisement.ImageUrl.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList()
+                : new List<string>();
+
+            // بناء محتوى الداتا المطابق تماماً لبيانات الإعلان (الريسبونس)
+            var advertisementResponse = new
+            {
+                id = advertisement.Id,
+                title = advertisement.Title,
+                content = advertisement.Content,
+                userId = advertisement.UserId,
+                price = advertisement.Price,
+                isActive = advertisement.IsActive,
+                isPaid = advertisement.IsPaid,
+                createdAt = advertisement.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"),
+                expiresAt = advertisement.ExpiresAt?.ToString("yyyy-MM-ddTHH:mm:ss"),
+                images = responseImages
+            };
+
+            var notification = new Notification
             {
                 RecipientId = userId,
-                Message = $"✅ تمت الموافقة على محتوى إعلانك بعنوان: '{advertisement.Title}'. يرجى سداد مبلغ ({price}) لتفعيل الإعلان ونشره رسمياً داخل التطبيق. علمًا أن الإعلان سيبقى غير منشور حتى إتمام الدفع.",
-                Type = NotificationType.StatusChanged,
+                Message = $"✅ تمت الموافقة على محتوى إعلانك بعنوان: '{advertisement.Title}'. يرجى سداد مبلغ ({price}) لتفعيل الإعلان ونشره رسمياً.",
+                Type = NotificationType.StatusChanged, // أو نوع الإشعار المناسب لديك
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _advRepo.SaveNotificationAsync(doctorNotification);
+            await _advRepo.SaveNotificationAsync(notification);
+
+            var notificationPayload = new
+            {
+                notification.Id,
+                notification.Type,
+                notification.CreatedAt,
+                Data = advertisementResponse
+            };
+
+            // إرسال الإشعار للمخبر عبر SignalR مباشرة على نفس الحدث المعتمد لديك
+            await _hubContext.Clients.User(userId.ToString())
+                .SendAsync("ReceiveOrderNotification", notificationPayload);
         }
         catch
         {
-            // تجاهل فشل إرسال الإشعار لكي لا يعطل العملية الأساسية
+            // تجاهل فشل الإرسال اللحظي لـ SignalR كي لا يعطل الـ API الأساسي
         }
 
         return (true, null);

@@ -314,12 +314,12 @@ public class AdvertisementController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
-    [HttpPatch("admin/accept-and-publish/user/{userId}/advertisement/{id}")]
-    public async Task<IActionResult> AcceptAndPublish([FromRoute] int userId, [FromRoute] int id, [FromForm] decimal price)
+    [HttpPatch("admin/accept-and-publish/lab/user/{userId}/advertisement/{id}")]
+    public async Task<IActionResult> AcceptAndPublishLabAdvertisement([FromRoute] int userId, [FromRoute] int id, [FromForm] decimal price)
     {
         try
         {
-            var (isProcessed, errorMessage) = await _advService.ActivateDoctorAdvertisementAsync(id, userId, price);
+            var (isProcessed, errorMessage) = await _advService.ActivateLabAdvertisementAsync(id, userId, price);
 
             if (!isProcessed)
             {
@@ -340,7 +340,7 @@ public class AdvertisementController : ControllerBase
 
             return Ok(new
             {
-                message = $"تم قبول الإعلان مبدئياً وتحديد السعر بمبلغ {price} وإرسال طلب دفع للطبيب بنجاح. يبقى الإعلان معلقاً حتى إتمام الدفع.",
+                message = $"تم قبول إعلان المخبر مبدئياً وتحديد السعر بمبلغ {price} وإرسال طلب دفع للمخبر بنجاح. يبقى الإعلان معلقاً حتى إتمام الدفع.",
                 advertisement = new
                 {
                     advertisement.Id,
@@ -358,7 +358,7 @@ public class AdvertisementController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "حدث خطأ داخلي أثناء معالجة اعتماد الإعلان وتحديد القيمة المالية.", error = ex.Message });
+            return StatusCode(500, new { message = "حدث خطأ داخلي أثناء معالجة اعتماد إعلان المخبر وتحديد القيمة المالية.", error = ex.Message });
         }
     }
     [Authorize(Roles = "Admin")]

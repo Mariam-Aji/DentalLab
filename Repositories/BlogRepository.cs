@@ -201,4 +201,10 @@ public class BlogRepository : IBlogRepository
         _context.BlogPosts.Remove(post);
         return await _context.SaveChangesAsync() > 0;
     }
+    public async Task<IEnumerable<Notification>> GetNotificationsByBlogPostIdAsync(int postId)
+    {
+        return await _context.Notifications
+            .Where(n => n.BlogPostId == postId)
+            .ToListAsync();
+    }
 }

@@ -45,5 +45,9 @@ public interface ICaseOrderRepository
     Task<List<CaseOrder>> GetUnpaidOrdersByDentistAsync(int dentistId);
     Task<List<CaseOrder>> GetOrdersByPatientIdAsync(int patientId);
     Task<List<CaseOrder>> GetOrdersWithPatientsAsync();
+    Task<string?> GetLabUserIdAsync(int labId);
+    Task<CaseOrder?> GetOrderWithDetailsAsync(int orderId);
+    Task AddNotificationAsync(Notification notification);
+    Task<int?> GetLabOwnerUserIdAsync(int labId);
 
 }

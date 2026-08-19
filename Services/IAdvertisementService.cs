@@ -18,8 +18,7 @@ public interface IAdvertisementService
     Task<List<Advertisement>> GetAdvertisementsForDentistsAsync();
     Task<List<Advertisement>> GetAdvertisementsForLabsAsync();
     Task<(Advertisement? result, string? error)> CreateAdvertisementByDoctorAsync(int doctorId, CreateAdvertisementDto dto);
-    Task<(bool isActivated, string? errorMessage)> ActivateDoctorAdvertisementAsync(int advertisementId, int userId, decimal price);
-    Task<List<Advertisement>> GetAdvertisementsByUserIdAsync(int userId);
+    //Task<(bool isActivated, string? errorMessage)> ActivateDoctorAdvertisementAsync(int advertisementId, int userId, decimal price); Task<List<Advertisement>> GetAdvertisementsByUserIdAsync(int userId);
     Task<List<User>> GetAllUsersAsync();
     Task<(User? result, string? error)> UpdateUserAsync(int userId, UpdateUserDto dto);
     Task<(bool success, string? error)> DeleteUserAsync(int userId);
@@ -27,5 +26,6 @@ public interface IAdvertisementService
     Task<(object? Data, string? Error)> GetUserActiveAdvertisementsWithCountAsync(int userId);
     Task<(object? Data, string? Error)> SearchAdvertisementsServiceAsync(string searchTerm);
     Task<List<Advertisement>> GetPaidAndActiveAdvertisementsForDentistsAsync();
+    Task<(bool isActivated, string? errorMessage)> ActivateLabAdvertisementAsync(int advertisementId, int userId, decimal price);
 
 }

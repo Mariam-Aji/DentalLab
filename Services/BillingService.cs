@@ -84,9 +84,7 @@ namespace DentalLab.Api.Services
             return (MapToCleanAdvertisements(dentists), MapToCleanAdvertisements(labs));
         }
 
-        // --- التوابع المساعدة الخاصة بك (دون أي تغيير) ---
-
-        // دالة تحويل الطلبيات
+     
         private List<CleanOrderInvoiceDto> MapToCleanOrders(List<CaseOrder> orders)
         {
             return orders.Select(o => new CleanOrderInvoiceDto

@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using DentalLab.Api.Data;
 using DentalLab.Api.Dtos.Complaints;
 using DentalLab.Api.Models;
+//using DentalLab.Api.Hubs;
 using DentalLab.Api.Repositories.Interfaces;
 using DentalLab.Api.Services.Interfaces;
 
@@ -15,14 +17,18 @@ namespace DentalLab.Api.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IComplaintRepository _complaintRepository;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public ComplaintService(ApplicationDbContext context, IComplaintRepository complaintRepository)
+        public ComplaintService(
+            ApplicationDbContext context,
+            IComplaintRepository complaintRepository,
+            IHubContext<NotificationHub> hubContext)
         {
             _context = context;
             _complaintRepository = complaintRepository;
+            _hubContext = hubContext;
         }
 
-        // دالة مساعدة لعمل Mapping وتحويل الـ Complaint إلى ComplaintDetailsDto (حقول الجدول فقط)
         private ComplaintDetailsDto MapToDto(Complaint c)
         {
             return new ComplaintDetailsDto
@@ -33,11 +39,9 @@ namespace DentalLab.Api.Services
                 Text = c.Text,
                 UserId = c.UserId,
                 TargetLabId = c.TargetLabId,
-                // تم استبعاد AdminId
                 CreatedAtUtc = c.CreatedAtUtc,
                 Reply = c.Reply,
                 RepliedAtUtc = c.RepliedAtUtc,
-                // إذا كان هناك رد، نحدد أن المصدر هو الإدارة، وإلا يكون null أو غير محدد
                 RepliedBy = !string.IsNullOrEmpty(c.Reply) ? "الإدارة" : null
             };
         }
@@ -54,26 +58,32 @@ namespace DentalLab.Api.Services
             string targetName = "الإدارة";
             int recipientId = 1;
 
+            // إذا تم إرسال معرف ضمن الراوت، فالشكوى موجهة لمخبر
             if (targetLabId.HasValue)
             {
                 complaint.Destination = ComplaintDestination.Lab;
                 complaint.TargetLabId = targetLabId.Value;
                 complaint.AdminId = null;
 
-                var labUser = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Id == targetLabId.Value);
+                // 1. البحث ضمن جدول المخابر (Labs) عن المخبر المطابق مع جلب صاحب المخبر (Owner / User)
+                var labRecord = await _context.Labs
+                    .Include(l => l.Owner) // جلب جدول المستخدمين المرتبط بالمخبر
+                    .FirstOrDefaultAsync(l => l.Id == targetLabId.Value);
 
-                if (labUser != null)
+                if (labRecord != null)
                 {
-                    targetName = labUser.NamePlace ?? "مخبر بدون اسم";
-                    recipientId = labUser.Id;
+                    // 2. الحصول على معرف المستخدم (UserId) وصاحب المخبر
+                    recipientId = labRecord.UserId;
+
+                    // 3. الحصول على اسم المكان (NamePlace) من جدول المستخدمين (Owner)
+                    targetName = labRecord.Owner?.NamePlace ?? labRecord.Owner?.Name ?? "مخبر بدون اسم";
                 }
                 else
                 {
                     throw new Exception("المخبر المستهدف غير موجود.");
                 }
             }
-            else
+            else // إذا لم يتم إرسال معرف ضمن الراوت، فالشكوى موجهة للأدمن حصراً
             {
                 complaint.Destination = ComplaintDestination.Admin;
                 complaint.TargetLabId = null;
@@ -85,10 +95,22 @@ namespace DentalLab.Api.Services
             await _complaintRepository.AddAsync(complaint);
             await _complaintRepository.SaveChangesAsync();
 
+            // بناء ريسبونس الشكوى
+            var complaintResponse = new ComplaintResponseDto
+            {
+                Id = complaint.Id,
+                Title = complaint.Title,
+                Text = complaint.Text,
+                Destination = complaint.Destination,
+                TargetName = targetName,
+                CreatedAtUtc = complaint.CreatedAtUtc
+            };
+
+            // حفظ الإشعار في قاعدة البيانات للمستقبل الصحيح (سواء المخبر أو الأدمن)
             var notification = new Notification
             {
                 RecipientId = recipientId,
-                Message = $"لديك شكوى جديدة بعنوان: '{dto.Title}'",
+                Message = $"شكوى جديدة: {complaint.Title}",
                 Type = NotificationType.InfoRequested,
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow,
@@ -98,17 +120,21 @@ namespace DentalLab.Api.Services
             await _context.Notifications.AddAsync(notification);
             await _context.SaveChangesAsync();
 
-            return new ComplaintResponseDto
+            // محتوى الإشعار المرسل عبر SignalR ليطابق ريسبونس الشكوى تماماً
+            var notificationPayload = new
             {
-                Id = complaint.Id,
-                Title = complaint.Title,
-                Text = complaint.Text,
-                Destination = complaint.Destination,
-                TargetName = targetName,
-                CreatedAtUtc = complaint.CreatedAtUtc
+                notification.Id,
+                notification.Type,
+                notification.CreatedAt,
+                Data = complaintResponse
             };
-        }
 
+            // إرسال الإشعار عبر SignalR للمستخدم المرتبط بالمخبر أو الأدمن
+            await _hubContext.Clients.User(recipientId.ToString())
+                .SendAsync("ReceiveOrderNotification", notificationPayload);
+
+            return complaintResponse;
+        }
         public async Task<List<Notification>> GetUserNotificationsAsync(int userId)
         {
             return await _context.Notifications
@@ -117,27 +143,25 @@ namespace DentalLab.Api.Services
                 .ToListAsync();
         }
 
-        // جلب شكاوى الإدارة وإرجاعها كـ DTO يحتوي حقول الجدول فقط
         public async Task<List<ComplaintDetailsDto>> GetAdminComplaintsAsync()
         {
             var complaints = await _complaintRepository.GetAdminComplaintsAsync();
             return complaints.Select(MapToDto).ToList();
         }
 
-        // جلب شكاوى المخابر وإرجاعها كـ DTO يحتوي حقول الجدول فقط
         public async Task<List<ComplaintDetailsDto>> GetLabComplaintsAsync()
         {
             var complaints = await _complaintRepository.GetLabComplaintsAsync();
             return complaints.Select(MapToDto).ToList();
         }
 
-        // جلب شكاوى الطبيب الخاص به وإرجاعها كـ DTO يحتوي حقول الجدول فقط
         public async Task<List<ComplaintDetailsDto>> GetDentistComplaintsAsync(int dentistId)
         {
             var complaints = await _complaintRepository.GetDentistComplaintsAsync(dentistId);
             return complaints.Select(MapToDto).ToList();
         }
-        public async Task<ComplaintDetailsDto> ReplyToComplaintAsync(int dentistId, int complaintId, ReplyComplaintDto dto)
+
+        public async Task<ComplaintDetailsDto> ReplyToComplaintAsync(int adminOrReplierId, int complaintId, ReplyComplaintDto dto)
         {
             var complaint = await _complaintRepository.GetByIdAsync(complaintId);
             if (complaint == null)
@@ -145,24 +169,21 @@ namespace DentalLab.Api.Services
                 throw new Exception("الشكوى غير موجودة.");
             }
 
-            // التحقق من أن الشكوى تخص الطبيب الممرر في الراوت لمنع أي تلاعب
-            if (complaint.UserId != dentistId)
-            {
-                throw new Exception("معرف الطبيب المستلم لا يتطابق مع صاحب الشكوى.");
-            }
-
-            // تحديث حقول الرد وتاريخ الرد
             complaint.Reply = dto.ReplyText;
             complaint.RepliedAtUtc = DateTime.UtcNow;
 
             await _complaintRepository.SaveChangesAsync();
 
-            // إنشاء إشعار موجه للطبيب (RecipientId = dentistId) متضمناً معرف الشكوى أو تفاصيلها
+            // صاحب الشكوى الأصلي (الذي سيصله الرد)
+            int targetRecipientId = complaint.UserId;
+
+            var complaintResponse = MapToDto(complaint);
+
             var notification = new Notification
             {
-                RecipientId = dentistId,
-                Message = $"تم الرد على شكواك رقم ({complaint.Id}) بعنوان: '{complaint.Title}'",
-                Type = NotificationType.InfoRequested, // أو أي نوع مناسب لديك
+                RecipientId = targetRecipientId,
+                Message = $"تم الرد على شكواك: {complaint.Title}",
+                Type = NotificationType.InfoRequested,
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow
             };
@@ -170,7 +191,19 @@ namespace DentalLab.Api.Services
             await _context.Notifications.AddAsync(notification);
             await _context.SaveChangesAsync();
 
-            return MapToDto(complaint);
+            // Payload الرد عبر SignalR ليطابق بنية البيانات المطلوبة
+            var replyPayload = new
+            {
+                notification.Id,
+                notification.Type,
+                notification.CreatedAt,
+                Data = complaintResponse
+            };
+
+            await _hubContext.Clients.User(targetRecipientId.ToString())
+                .SendAsync("ReceiveOrderNotification", replyPayload);
+
+            return complaintResponse;
         }
     }
 }

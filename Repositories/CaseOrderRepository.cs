@@ -464,5 +464,36 @@ public class CaseOrderRepository : ICaseOrderRepository
 
         return await _context.SaveChangesAsync() > 0;
     }
+    public async Task<string?> GetLabUserIdAsync(int labId)
+    {
+        var lab = await _context.Labs
+            .Include(l => l.Owner) // جلب جدول المستخدمين المرتبط بالمخبر
+            .FirstOrDefaultAsync(l => l.Id == labId);
+
+        // إرجاع معرّف المستخدم المالك كـ String (ليتوافق مع SignalR)
+        return lab?.UserId.ToString();
+    }
+    public async Task<CaseOrder?> GetOrderWithDetailsAsync(int orderId)
+    {
+        return await _context.CaseOrders
+            .Include(o => o.Items)       // جلب العناصر (التعويضات وأرقام الأسنان)
+            .Include(o => o.Patient)     // جلب بيانات المريض إن وجدت
+            .Include(o => o.AssignedLab) // جلب بيانات المخبر
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+    }
+    public async Task AddNotificationAsync(Notification notification)
+    {
+        await _context.Notifications.AddAsync(notification);
+        await _context.SaveChangesAsync();
+    }
+    public async Task<int?> GetLabOwnerUserIdAsync(int labId)
+    {
+        var lab = await _context.Labs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.Id == labId);
+
+        // استبدلي l.Id بالخاصية التي تمثل معرّف المستخدم (UserId) في جدول الـ Labs لديك
+        return lab != null ? (int?)lab.Id : null;
+    }
 }
     

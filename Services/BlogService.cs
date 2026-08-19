@@ -2,6 +2,7 @@
 using DentalLab.Api.Models;
 using DentalLab.Api.Repositories;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,11 +15,13 @@ public class BlogService : IBlogService
 {
     private readonly IBlogRepository _blogRepo;
     private readonly IWebHostEnvironment _env;
+    private readonly IHubContext<NotificationHub> _hubContext; 
 
-    public BlogService(IBlogRepository blogRepo, IWebHostEnvironment env)
+    public BlogService(IBlogRepository blogRepo, IWebHostEnvironment env, IHubContext<NotificationHub> hubContext)
     {
         _blogRepo = blogRepo;
         _env = env;
+        _hubContext = hubContext;
     }
 
     public async Task<(BlogPostResponseDto? result, string? error)> CreateDoctorPostAsync(CreatePostDto dto, int doctorId)
@@ -113,7 +116,7 @@ public class BlogService : IBlogService
             return (null, "المنشور المحدد غير موجود.");
         }
 
-        int targetDoctorId = post.AuthorId;
+        int targetUserId = post.AuthorId;
         string postTitle = post.Title;
 
         post.Status = BlogPostStatus.Approved;
@@ -134,29 +137,9 @@ public class BlogService : IBlogService
             }
         }
 
-        await _blogRepo.SaveNotificationAsync(new Notification
-        {
-            RecipientId = targetDoctorId,
-            BlogPostId = post.Id,
-            Message = $"🎉 تهانينا! تمت الموافقة على نشر منشورك بعنوان '{postTitle}' وهو متاح للعامة الآن.",
-            Type = NotificationType.StatusChanged,
-            IsRead = false
-        });
-
-        var response = new BlogPostResponseDto
-        {
-            PostId = post.Id,
-            Title = post.Title,
-            Content = post.Content,
-            Type = post.Type.ToString(),
-            AuthorId = post.AuthorId,
-            AuthorName = post.Author != null ? post.Author.Name : "طبيب معروف",
-            AuthorProfilePictureUrl = post.Author?.ProfilePictureUrl,
-            IsSensitiveRedacted = post.IsSensitiveRedacted,
-            Status = "Approved",
-            ReviewMessage = "تم قبول المنشور ونُشر بنجاح!",
-            CreatedAt = post.CreatedAt,
-            Attachments = post.Attachments.Select(a => new BlogAttachmentDto
+        // معالجة الـ Attachments بأمان تام لتلافي أي تحذيرات null
+        var attachmentsList = post.Attachments != null
+            ? post.Attachments.Select(a => new BlogAttachmentDto
             {
                 Id = a.Id,
                 Path = a.Path,
@@ -164,24 +147,80 @@ public class BlogService : IBlogService
                 UploadedAt = a.UploadedAt,
                 BlogPostId = post.Id
             }).ToList()
+            : new List<BlogAttachmentDto>();
+
+        var postResponseDto = new BlogPostResponseDto
+        {
+            PostId = post.Id,
+            Title = post.Title,
+            Content = post.Content,
+            Type = post.Type.ToString(),
+            AuthorId = post.AuthorId,
+            AuthorName = post.Author?.Name ?? "مستخدم معروف", // استخدام Null-coalescing لتجنب الـ Null reference
+            AuthorProfilePictureUrl = post.Author?.ProfilePictureUrl,
+            IsSensitiveRedacted = post.IsSensitiveRedacted,
+            Status = "Approved",
+            ReviewMessage = "تم قبول المنشور ونُشر بنجاح!",
+            CreatedAt = post.CreatedAt,
+            Attachments = attachmentsList
         };
 
-        return (response, null);
+        var notification = new Notification
+        {
+            RecipientId = targetUserId,
+            BlogPostId = post.Id,
+            Message = $"🎉 تهانينا! تمت الموافقة على نشر مقالك بعنوان '{postTitle}' وهو متاح للعامة الآن.",
+            Type = NotificationType.StatusChanged,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _blogRepo.SaveNotificationAsync(notification);
+
+        try
+        {
+            var notificationPayload = new
+            {
+                notification.Id,
+                notification.Type,
+                notification.CreatedAt,
+                notification.Message,
+                Data = postResponseDto
+            };
+
+            // إرسال الإشعار الفوري عبر SignalR باستخدام الحقل المحقون _hubContext بنجاح
+            await _hubContext.Clients.User(targetUserId.ToString())
+                .SendAsync("ReceiveOrderNotification", notificationPayload);
+        }
+        catch
+        {
+            // تجاهل خطأ فشل الإرسال الفوري لكي لا يعطل عملية قبول المنشور الأساسية
+        }
+
+        return (postResponseDto, null);
     }
 
     public async Task<(bool success, string? error)> RejectPostAsync(int postId)
     {
+        // 1. جلب المنشور مع المرفقات ومعلومات الكاتب
         var post = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(postId);
-        if (post == null) return (false, "المنشور المحدد غير موجود.");
+        if (post == null)
+        {
+            return (false, "المنشور المحدد غير موجود.");
+        }
 
-        int targetDoctorId = post.AuthorId;
+        int targetUserId = post.AuthorId;
         string postTitle = post.Title;
 
+        // 2. تحديث حالة المنشور إلى مرفوض
         post.Status = BlogPostStatus.Rejected;
-
         var isUpdated = await _blogRepo.UpdateBlogPostAsync(post);
-        if (!isUpdated) return (false, "حدث خطأ أثناء محاولة تحديث حالة المنشور إلى مرفوض.");
+        if (!isUpdated)
+        {
+            return (false, "حدث خطأ أثناء محاولة تحديث حالة المنشور إلى مرفوض.");
+        }
 
+        // 3. تحديث حالة إشعار الأدمن (جعل الإشعار مقروءاً)
         var adminId = await _blogRepo.GetAdminIdAsync();
         if (adminId.HasValue)
         {
@@ -193,18 +232,44 @@ public class BlogService : IBlogService
             }
         }
 
-        await _blogRepo.SaveNotificationAsync(new Notification
+        // 4. بناء رسالة الإشعار الموجهة لصاحب المنشور للأسباب المتعلقة بالخصوصية وشروط النشر
+        string notificationMessage = $"🛑 نعتذر منك، لقد تم رفض نشر مقالك المعنون بـ '{postTitle}' من قبل الإدارة لأسباب تتعلق بسياسة الخصوصية وشروط الاستخدام.";
+
+        var newNotification = new Notification
         {
-            RecipientId = targetDoctorId,
+            RecipientId = targetUserId,
             BlogPostId = post.Id,
-            Message = $"🛑 نعتذر منك، لقد تم رفض نشر مقالك الطبي المعنون بـ '{postTitle}' لمخالفته شروط المراجعة، يمكنك تعديله وإعادة إرساله.",
+            Message = notificationMessage,
             Type = NotificationType.StatusChanged,
-            IsRead = false
-        });
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // 5. حفظ الإشعار في قاعدة البيانات
+        await _blogRepo.SaveNotificationAsync(newNotification);
+
+        // 6. إرسال الإشعار الفوري عبر SignalR
+        try
+        {
+            var notificationPayload = new
+            {
+                newNotification.Id,
+                newNotification.Type,
+                newNotification.CreatedAt,
+                newNotification.Message,
+                Data = new { PostId = post.Id, Title = post.Title, Status = "Rejected" }
+            };
+
+            await _hubContext.Clients.User(targetUserId.ToString())
+                .SendAsync("ReceiveOrderNotification", notificationPayload);
+        }
+        catch
+        {
+            // تجاهل خطأ فشل الإرسال الفوري لضمان عدم تعطل عملية الرفض الأساسية
+        }
 
         return (true, null);
     }
-
     public async Task<List<BlogPostResponseDto>> GetDoctorPostsAsync(int doctorId)
     {
         var posts = await _blogRepo.GetBlogPostsByAuthorIdAsync(doctorId);
@@ -572,5 +637,88 @@ public class BlogService : IBlogService
     public async Task<bool> DeleteDoctorPostAsync(int postId)
     {
         return await _blogRepo.DeleteDoctorPostAsync(postId);
+    }
+    public async Task<(bool success, string? error)> DeletePostByAdminAsync(int postId)
+    {
+        // 1. جلب المنشور مع المرفقات ومعلومات الكاتب
+        var post = await _blogRepo.GetBlogPostWithAttachmentsByIdAsync(postId);
+        if (post == null)
+        {
+            return (false, "المنشور المحدد غير موجود.");
+        }
+
+        int targetUserId = post.AuthorId;
+        string postTitle = post.Title;
+
+        // 2. فك ارتباط الإشعارات المرتبطة بهذا المنشور أولاً لتجنب خطأ Foreign Key Conflict
+        var relatedNotifications = await _blogRepo.GetNotificationsByBlogPostIdAsync(postId);
+        if (relatedNotifications != null && relatedNotifications.Any())
+        {
+            foreach (var notification in relatedNotifications)
+            {
+                notification.BlogPostId = null; // تفريغ المعرف لكسر قيد الـ FK
+                await _blogRepo.UpdateNotificationAsync(notification);
+            }
+        }
+
+        // 3. حذف الملفات الفيزيائية المرفقة من السيرفر إن وجدت
+        if (post.Attachments != null && post.Attachments.Any())
+        {
+            foreach (var attachment in post.Attachments)
+            {
+                if (!string.IsNullOrEmpty(attachment.Path))
+                {
+                    var fullPath = Path.Combine(_env.ContentRootPath, attachment.Path.Replace("/", Path.DirectorySeparatorChar.ToString()));
+                    if (File.Exists(fullPath))
+                    {
+                        try { File.Delete(fullPath); } catch { }
+                    }
+                }
+            }
+        }
+
+        // 4. حذف المنشور من قاعدة البيانات
+        var isDeleted = await _blogRepo.DeleteDoctorPostAsync(postId);
+        if (!isDeleted)
+        {
+            return (false, "حدث خطأ أثناء محاولة حذف المنشور من قاعدة البيانات.");
+        }
+
+        // 5. إنشاء إشعار جديد يوضح سبب الحذف لصاحب المنشور
+        string notificationMessage = $"⚠️ نود إعلامك بأنه تم حذف منشورك الموسوم بـ '{postTitle}' من قبل الإدارة لأسباب تتعلق بسياسة الخصوصية وشروط الاستخدام.";
+
+        var newNotification = new Notification
+        {
+            RecipientId = targetUserId,
+            BlogPostId = null,
+            Message = notificationMessage,
+            Type = NotificationType.StatusChanged,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _blogRepo.SaveNotificationAsync(newNotification);
+
+        // 6. إرسال الإشعار الفوري عبر SignalR
+        try
+        {
+            var notificationPayload = new
+            {
+                newNotification.Id,
+                newNotification.Type,
+                newNotification.CreatedAt,
+                newNotification.Message,
+                Data = new { PostId = postId, Title = postTitle }
+            };
+
+            await _hubContext.Clients.User(targetUserId.ToString())
+                .SendAsync("ReceiveOrderNotification", notificationPayload);
+        }
+        catch
+        {
+            // تجاهل خطأ فشل الإرسال الفوري لضمان عدم تعطل عملية الحذف
+        }
+
+        return (true, null);
     }
 }
