@@ -1,6 +1,7 @@
 using DentalLab.Api.Data;
 using DentalLab.Api.Models;
-//using DentalLab.Api.Hubs; // 🌟 فك التعليق عن الـ Hubs لتفعيل NotificationHub
+
+// using DentalLab.Api.Hubs; // ?? ??????? ?? ??????? ??? ??? ???? ??? Hub ??????
 using DentalLab.Api.Repositories;
 using DentalLab.Api.Repositories.Interfaces;
 using DentalLab.Api.Services;
@@ -22,13 +23,14 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never; // <--- تم التعديل هنا لكي تظهر الحقول حتى لو كانت null
+
     })
     .AddNewtonsoftJson(options =>
     {
         options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include;
+        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include; // <--- تم التعديل هنا أيضاً لضمان ظهورها مع Newtonsoft إذا تم استخدامها
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -36,17 +38,19 @@ builder.Services.AddEndpointsApiExplorer();
 // 2. إعداد خدمة الـ SignalR للإشعارات الفورية
 builder.Services.AddSignalR();
 
-// 3. إعداد سياسات الأمان للـ CORS (تم توسيع سياسة React لتلائم اختبارات صفحات الـ HTML المحلية أيضاً)
+// 3. إعداد سياسات الأمان للـ CORS لربط تطبيق React (مع السماح بإرسال الـ Credentials)
 builder.Services.AddCors(options =>
 {
+    // سياسة خاصة بـ React لتسمح بإرسال الـ Credentials عبر الـ Port 5173
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5500", "http://localhost:5500", "null")
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // هامة جداً مع SignalR
+              .AllowCredentials(); // <--- هامة جداً مع withCredentials في الطلبات أو SPA ومن ضمنها SignalR
     });
 
+    // سياسة مفتوحة للجميع
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
@@ -178,7 +182,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 7. إعداد نظام المصادقة عبر الـ JWT وضبط التحقق من التوكن لصلاحيات الـ Query String لمسارات SignalR Hub
+// 7. إعداد نظام المصادقة عبر الـ JWT وضبط التحقق من التوكن وصلاحيات الـ Query String لمسارات SignalR Hub
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 if (jwtSettings == null || string.IsNullOrWhiteSpace(jwtSettings.Key))
 {
@@ -190,6 +194,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
+
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
@@ -202,12 +207,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            // 🌟 الإضافة الهامة هنا: التحقق من قاعدة البيانات مع كل طلب لرفض التوكن فوراً إذا تم تعليق الحساب (Suspended)
             OnTokenValidated = async context =>
             {
                 var dbContext = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
                 var userIdClaim = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                                    ?? context.Principal?.FindFirst("sub")?.Value
-                                    ?? context.Principal?.FindFirst("id")?.Value;
+                                  ?? context.Principal?.FindFirst("sub")?.Value
+                                  ?? context.Principal?.FindFirst("id")?.Value;
 
                 if (int.TryParse(userIdClaim, out int userId))
                 {
@@ -224,6 +230,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
 
+                // يقبل التوكن من Query String لكل مسارات SignalR
                 if (!string.IsNullOrEmpty(accessToken) &&
                     (path.StartsWithSegments("/notificationHub") ||
                      path.StartsWithSegments("/notifications")))
@@ -238,6 +245,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 var app = builder.Build();
 
 app.UseSwagger();
+
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "DentalLab.Api v1");
@@ -246,11 +254,10 @@ app.UseSwaggerUI(c =>
 
 app.UseHttpsRedirection();
 
-// 🌟 ترتيب الـ Middlewares الهام جداً لاتصالات SignalR والـ CORS
-app.UseRouting();
-
+// تفعيل إعدادات الـ CORS قبل المصادقة لضمان معالجة Pre-flight requests
 app.UseCors("AllowReactApp");
 
+// إعداد مجلد الملفات الثابتة لتحميل الصور والملفات
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
@@ -261,9 +268,10 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ربط مسارات التطبيق وتحديد الـ Hub
-app.MapControllers();
+// ربط مسار الـ Hub الخاص بالإشعارات الفورية
 app.MapHub<NotificationHub>("/notificationHub");
+
+app.MapControllers();
 
 // تشغيل السيدر لإنشاء حساب الأدمن عند بدء التطبيق
 await AdminSeeder.SeedAsync(app.Services);
