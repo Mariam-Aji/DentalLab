@@ -1,4 +1,5 @@
 ﻿using DentalLab.Api.Dtos;
+using DentalLab.Api.DTOs;
 using DentalLab.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -386,8 +387,31 @@ public class CaseOrdersController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "حدث خطأ داخلي في الخادم.", details = ex.Message });
+        } }
+        [HttpPost("{caseOrderId}/reply-to-lab")]
+        public async Task<IActionResult> SendReplyToLab(int caseOrderId, [FromForm] ReplyToLabDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Notes))
+                return BadRequest(new { Message = "لا يمكن إرسال ملاحظات فارغة." });
+
+            // استخراج معرف الطبيب (UserId) من الـ Token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                           ?? User.FindFirst("sub")?.Value;
+
+            if (!int.TryParse(userIdClaim, out int dentistUserId))
+                return Unauthorized(new { Message = "بيانات المستخدم غير صالحة." });
+
+            var result = await _service.SendReplyToLabAsync(caseOrderId, dentistUserId, dto);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { Message = result.Message });
+            }
+
+            return Ok(new { Message = result.Message });
         }
     }
-}
+
+
 
     

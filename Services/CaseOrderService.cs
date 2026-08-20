@@ -1020,10 +1020,8 @@ namespace DentalLab.Api.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            // حفظ الإشعار في قاعدة البيانات (يمكنك استخدام _repo لحفظه)
             await _repo.AddNotificationAsync(notification);
 
-            // 4. تجهيز بيانات الطلبية الكاملة لإرسالها عبر SignalR
             var notificationPayload = new
             {
                 notification.Id,
@@ -1065,5 +1063,73 @@ namespace DentalLab.Api.Services
 
             return "تم إرسال إشعار تفاصيل الطلبية للمخبر بنجاح.";
         }
+
+        public async Task<(bool Success, string? Message)> SendReplyToLabAsync(int caseOrderId, int dentistUserId, ReplyToLabDto dto)
+        {
+            try
+            {
+                // 1. جلب الطلبية للتأكد من وجودها
+                var order = await _repo.GetOrderByIdAsync(caseOrderId);
+                if (order == null)
+                    return (false, "الطلبية غير موجودة.");
+
+                // 2. التأكد من أن الطبيب الذي يحاول الإرسال هو صاحب الطلبية
+                if (order.CreatedById != dentistUserId)
+                    return (false, "غير مصرح لك بإضافة ملاحظات لهذه الطلبية.");
+
+                // 3. التأكد من أن الطلبية مسندة لمخبر
+                if (order.AssignedLabId == null)
+                    return (false, "لا يمكن إرسال رد، الطلبية غير مسندة لأي مخبر بعد.");
+
+                // 4. تحديث الملاحظات (يمكنك استبدال النص أو الإضافة عليه، هنا سنقوم بالإضافة مع فاصل سطر إذا كان هناك ملاحظات سابقة)
+                if (string.IsNullOrWhiteSpace(order.Notes))
+                {
+                    order.Notes = dto.Notes;
+                }
+                else
+                {
+                    order.Notes += $"\nرد الطبيب: {dto.Notes}";
+                }
+
+                await _repo.UpdateOrderAsync(order);
+
+                // ==========================================
+                // 5. آلية الإشعار الناجحة بدقة:
+                // جلب بيانات المخبر للحصول على UserId الحقيقي
+                // ==========================================
+                var lab = await _repo.GetLabByIdAsync(order.AssignedLabId.Value);
+                if (lab == null)
+                    return (false, "لم يتم العثور على بيانات المخبر المرتبط بالطلبية.");
+
+                int targetUserId = lab.UserId;
+
+                string alertText = $"قام الطبيب بإرسال توضيح/ملاحظات جديدة للطلبية رقم ({caseOrderId}).";
+
+                var notification = new Notification
+                {
+                    RecipientId = targetUserId,
+                    Message = alertText,
+                    Type = NotificationType.StatusChanged, // تم التعديل لتتوافق مع الأنواع المعرفة لديك
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _repo.SaveNotificationAsync(notification);
+
+                // إرسال الإشعار الفوري (SignalR) للمجموعة وللمستخدم بدقة
+                string labGroupId = $"Lab_{order.AssignedLabId.Value}";
+
+                await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
+                await _hubContext.Clients.User(targetUserId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
+                // ==========================================
+
+                return (true, "تم إرسال الرد للمخبر بنجاح.");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"حدث خطأ داخلي أثناء معالجة الرد: {ex.Message}");
+            }
+        }
     }
 }
+

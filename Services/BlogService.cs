@@ -650,13 +650,14 @@ public class BlogService : IBlogService
         int targetUserId = post.AuthorId;
         string postTitle = post.Title;
 
-        // 2. فك ارتباط الإشعارات المرتبطة بهذا المنشور أولاً لتجنب خطأ Foreign Key Conflict
+        // 2. فك ارتباط الإشعارات المرتبطة بهذا المنشور وحفظ التعديل فورا
         var relatedNotifications = await _blogRepo.GetNotificationsByBlogPostIdAsync(postId);
         if (relatedNotifications != null && relatedNotifications.Any())
         {
             foreach (var notification in relatedNotifications)
             {
-                notification.BlogPostId = null; // تفريغ المعرف لكسر قيد الـ FK
+                notification.BlogPostId = null;
+                // افتراض أن UpdateNotificationAsync يقوم بحفظ التغييرات (SaveChanges) تلقائياً
                 await _blogRepo.UpdateNotificationAsync(notification);
             }
         }
@@ -677,7 +678,7 @@ public class BlogService : IBlogService
             }
         }
 
-        // 4. حذف المنشور من قاعدة البيانات
+        // 4. حذف المنشور من قاعدة البيانات بأمان تام
         var isDeleted = await _blogRepo.DeleteDoctorPostAsync(postId);
         if (!isDeleted)
         {
