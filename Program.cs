@@ -1,7 +1,6 @@
 using DentalLab.Api.Data;
 using DentalLab.Api.Models;
-
-// using DentalLab.Api.Hubs; // ?? ??????? ?? ??????? ??? ??? ???? ??? Hub ??????
+//using DentalLab.Api.Hubs; // تفعيل استيراد الـ Hub
 using DentalLab.Api.Repositories;
 using DentalLab.Api.Repositories.Interfaces;
 using DentalLab.Api.Services;
@@ -10,7 +9,6 @@ using DentalLab.Api.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -18,53 +16,55 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. إعداد الـ Controllers والتعديل هنا لإظهار الحقول حتى لو كانت null
+// 1. إعداد الـ Controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never; // <--- تم التعديل هنا لكي تظهر الحقول حتى لو كانت null
-
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
     })
     .AddNewtonsoftJson(options =>
     {
         options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include; // <--- تم التعديل هنا أيضاً لضمان ظهورها مع Newtonsoft إذا تم استخدامها
+        options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Include;
     });
 
 builder.Services.AddEndpointsApiExplorer();
 
-// 2. إعداد خدمة الـ SignalR للإشعارات الفورية
+// 2. إعداد خدمة الـ SignalR
 builder.Services.AddSignalR();
 
-// 3. إعداد سياسات الأمان للـ CORS لربط تطبيق React (مع السماح بإرسال الـ Credentials)
+// 3. إعداد سياسات الأمان للـ CORS (تمت إضافة منافذ Live Server لتجنب أخطاء الاختبار)
 builder.Services.AddCors(options =>
 {
-    // سياسة خاصة بـ React لتسمح بإرسال الـ Credentials عبر الـ Port 5173
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5500", "http://localhost:5500")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // <--- هامة جداً مع withCredentials في الطلبات أو SPA ومن ضمنها SignalR
+              .AllowCredentials(); // ضرورية جداً لـ SignalR
     });
 
-    // سياسة مفتوحة للجميع
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader());
 });
 
-// 4. قراءة الإعدادات (Settings) من ملف appsettings.json
+// 4. قراءة الإعدادات
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection("OtpSettings"));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services.Configure<RefreshTokenSettings>(builder.Configuration.GetSection("RefreshTokenSettings"));
 builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
 
-// 5. حقن تبعات الخدمات المستودعات (Dependency Injection)
+// 5. تسجيل الـ DbContext
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Database=DentalLabDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
+
+// 6. حقن التبعات (Services & Repositories)
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ILabRepository, LabRepository>();
@@ -73,11 +73,6 @@ builder.Services.AddScoped<IConnectionRepository, ConnectionRepository>();
 builder.Services.AddScoped<IConnectionService, ConnectionService>();
 builder.Services.AddScoped<IConnectionForLabRepository, ConnectionForLabRepository>();
 builder.Services.AddScoped<IConnectionForLabService, ConnectionForLabService>();
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Database=DentalLabDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
-
-builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddScoped<IRatingService, RatingService>();
 builder.Services.AddScoped<IAccountsRepository, AccountsRepository>();
@@ -120,9 +115,7 @@ builder.Services.AddScoped<IDentistNotificationService, DentistNotificationServi
 builder.Services.AddScoped<IAdvertisementService, AdvertisementService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
 builder.Services.AddScoped<IPostService, PostService>();
-
 builder.Services.AddScoped<INotificationService, NotificationService>();
-
 builder.Services.AddScoped<ILabVerificationRepository, LabVerificationRepository>();
 builder.Services.AddScoped<ILabVerificationService, LabVerificationService>();
 builder.Services.AddScoped<IDentistVerificationRepository, DentistVerificationRepository>();
@@ -133,10 +126,8 @@ builder.Services.AddScoped<ILabPaymentRepository, LabPaymentRepository>();
 builder.Services.AddScoped<IFinancialReportRepository, FinancialReportRepository>();
 builder.Services.AddScoped<ISubscriptionReportRepository, SubscriptionReportRepository>();
 builder.Services.AddScoped<ISubscriptionReportService, SubscriptionReportService>();
-
 builder.Services.AddScoped<IComplaintRepository, ComplaintRepository>();
 builder.Services.AddScoped<IComplaintService, ComplaintService>();
-
 builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 builder.Services.AddHttpClient<GatewayPaymentService>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
@@ -154,6 +145,7 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddHostedService<SubscriptionCheckerService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// 7. إعداد Swagger
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "DentalLab.Api", Version = "v1" });
@@ -164,7 +156,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and then your valid token.\r\n\r\nExample: \"Bearer eyJhbGciOiJIUzI1NiIs...\""
+        Description = "Enter 'Bearer' [space] and then your valid token."
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -182,7 +174,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 7. إعداد نظام المصادقة عبر الـ JWT وضبط التحقق من التوكن وصلاحيات الـ Query String لمسارات SignalR Hub
+// 8. إعداد نظام المصادقة عبر الـ JWT
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 if (jwtSettings == null || string.IsNullOrWhiteSpace(jwtSettings.Key))
 {
@@ -194,7 +186,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
@@ -207,13 +198,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
-            // 🌟 الإضافة الهامة هنا: التحقق من قاعدة البيانات مع كل طلب لرفض التوكن فوراً إذا تم تعليق الحساب (Suspended)
             OnTokenValidated = async context =>
             {
                 var dbContext = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
                 var userIdClaim = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                                  ?? context.Principal?.FindFirst("sub")?.Value
-                                  ?? context.Principal?.FindFirst("id")?.Value;
+                                ?? context.Principal?.FindFirst("sub")?.Value
+                                ?? context.Principal?.FindFirst("id")?.Value;
 
                 if (int.TryParse(userIdClaim, out int userId))
                 {
@@ -230,7 +220,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
 
-                // يقبل التوكن من Query String لكل مسارات SignalR
                 if (!string.IsNullOrEmpty(accessToken) &&
                     (path.StartsWithSegments("/notificationHub") ||
                      path.StartsWithSegments("/notifications")))
@@ -245,7 +234,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 var app = builder.Build();
 
 app.UseSwagger();
-
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "DentalLab.Api v1");
@@ -254,10 +242,9 @@ app.UseSwaggerUI(c =>
 
 app.UseHttpsRedirection();
 
-// تفعيل إعدادات الـ CORS قبل المصادقة لضمان معالجة Pre-flight requests
+// تفعيل الـ CORS أولاً وقبل المصادقة والـ Hubs
 app.UseCors("AllowReactApp");
 
-// إعداد مجلد الملفات الثابتة لتحميل الصور والملفات
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
@@ -268,12 +255,11 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ربط مسار الـ Hub الخاص بالإشعارات الفورية
-app.MapHub<NotificationHub>("/notificationHub");
+// ربط مسار الـ Hub الخاص بالإشعارات الفورية وتفعيل الحماية
+app.MapHub<NotificationHub>("/notificationHub").RequireAuthorization();
 
 app.MapControllers();
 
-// تشغيل السيدر لإنشاء حساب الأدمن عند بدء التطبيق
 await AdminSeeder.SeedAsync(app.Services);
 
 app.Run();

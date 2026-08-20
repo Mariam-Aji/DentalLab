@@ -559,11 +559,17 @@ namespace DentalLab.Api.Services
 
                 await _repo.UpdateOrderAsync(order);
 
+                // ==========================================
+                // التعديل هنا فقط: جلب UserId لضمان وصول الإشعار
+                // ==========================================
+                var lab = await _repo.GetLabByIdAsync(labId);
+                int targetUserId = lab != null ? lab.UserId : labId;
+
                 string alertText = $"قام الطبيب بتعديل الطلبية رقم ({caseOrderId}) وإضافة عناصر تعويضية جديدة، بانتظار مراجعتكم وتحديد السعر النهائي.";
 
                 var notification = new Notification
                 {
-                    RecipientId = labId,
+                    RecipientId = targetUserId, // تم التعديل لاستخدام UserId
                     Message = alertText,
                     Type = NotificationType.StatusChanged,
                     IsRead = false,
@@ -576,7 +582,9 @@ namespace DentalLab.Api.Services
 
                 await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
 
-                await _hubContext.Clients.User(labId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
+                // تم التعديل لاستخدام UserId
+                await _hubContext.Clients.User(targetUserId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
+                // ==========================================
 
                 return (true, null);
             }
@@ -585,63 +593,67 @@ namespace DentalLab.Api.Services
                 return (false, $"حدث خطأ داخلي أثناء معالجة التعديلات والإرسال: {ex.Message}");
             }
         }
+
+
         public async Task<(bool Success, string? Message, decimal RefundAmount)> CancelAndProcessOrderAsync(int caseOrderId, int labId, CancelCaseOrderDto dto)
-{
-    var order = await _repo.GetOrderByIdAsync(caseOrderId);
-    if (order == null) 
-        return (false, "طلب التعويض غير موجود.", 0);
-
-    if (order.AssignedLabId != labId)
-        return (false, "هذه الطلبية لا تنتمي للمخبر المحدّد.", 0);
-
-    try
-    {
-        var timeElapsed = DateTime.UtcNow - order.CreatedAt;
-        decimal estimatedPrice = order.EstimatedPrice ?? 0;
-        decimal refundAmount = 0;
-        string financialAlertMessage = "";
-
-        if (timeElapsed.TotalDays <= 1)
         {
-            refundAmount = estimatedPrice;
-            financialAlertMessage = $"تم إلغاء الطلب في غضون 24 ساعة. تم استرداد المبلغ بالكامل: $.";
+            var order = await _repo.GetOrderByIdAsync(caseOrderId);
+            if (order == null)
+                return (false, "طلب التعويض غير موجود.", 0);
+
+            if (order.AssignedLabId != labId)
+                return (false, "هذه الطلبية لا تنتمي للمخبر المحدّد.", 0);
+
+            try
+            {
+                var timeElapsed = DateTime.UtcNow - order.CreatedAt;
+                decimal estimatedPrice = order.EstimatedPrice ?? 0;
+                decimal refundAmount = 0;
+                string financialAlertMessage = "";
+
+                if (timeElapsed.TotalDays <= 1)
+                {
+                    refundAmount = estimatedPrice;
+                    financialAlertMessage = $"تم إلغاء الطلب في غضون 24 ساعة. تم استرداد المبلغ بالكامل: $.";
+                }
+                else
+                {
+                    refundAmount = estimatedPrice * 0.5m;
+                    financialAlertMessage = $"تنبيه: مضى أكثر من يوم على إنشاء الطلب، تم خصم 50% كغرامة إلغاء.  المسترد: $.";
+                }
+
+                string cleanReason = string.IsNullOrWhiteSpace(dto.CancellationReason) ? "لم يتم ذكر سبب محدد" : dto.CancellationReason;
+                string alertText = $"قام الطبيب بإلغاء الطلبية رقم ({caseOrderId}). سبب الإلغاء: {cleanReason}. {financialAlertMessage}";
+
+                var lab = await _repo.GetLabByIdAsync(labId);
+                if (lab == null) return (false, "لم يتم العثور على بيانات المخبر.", 0);
+
+                var notification = new Notification
+                {
+                    RecipientId = lab.UserId, // هنا الكود الخاص بك كان صحيحاً من البداية
+                    Message = alertText,
+                    Type = NotificationType.Cancellation,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _repo.SaveNotificationAsync(notification);
+
+                var isDeleted = await _repo.DeleteOrderAsync(order);
+                if (!isDeleted) return (false, "فشل في عملية حذف الطلبية من السيرفر.", 0);
+
+                string labGroupId = $"Lab_{labId}";
+                await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
+
+                // هنا أيضاً الكود الخاص بك كان صحيحاً
+                await _hubContext.Clients.User(lab.UserId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
+
+                return (true, financialAlertMessage, refundAmount);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"حدث خطأ داخلي أثناء الإلغاء: {ex.Message}", 0);
+            }
         }
-        else
-        {
-            refundAmount = estimatedPrice * 0.5m;
-            financialAlertMessage = $"تنبيه: مضى أكثر من يوم على إنشاء الطلب، تم خصم 50% كغرامة إلغاء.  المسترد: $.";
-        }
-
-        string cleanReason = string.IsNullOrWhiteSpace(dto.CancellationReason) ? "لم يتم ذكر سبب محدد" : dto.CancellationReason;
-        string alertText = $"قام الطبيب بإلغاء الطلبية رقم ({caseOrderId}). سبب الإلغاء: {cleanReason}. {financialAlertMessage}";
-
-        var lab = await _repo.GetLabByIdAsync(labId); 
-        if (lab == null) return (false, "لم يتم العثور على بيانات المخبر.", 0);
-
-        var notification = new Notification
-        {
-            RecipientId = lab.UserId, 
-            Message = alertText,
-            Type = NotificationType.Cancellation,
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        };
-        await _repo.SaveNotificationAsync(notification);
-
-        var isDeleted = await _repo.DeleteOrderAsync(order);
-        if (!isDeleted) return (false, "فشل في عملية حذف الطلبية من السيرفر.", 0);
-
-        string labGroupId = $"Lab_{labId}";
-        await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
-        await _hubContext.Clients.User(lab.UserId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
-
-        return (true, financialAlertMessage, refundAmount);
-    }
-    catch (Exception ex)
-    {
-        return (false, $"حدث خطأ داخلي أثناء الإلغاء: {ex.Message}", 0);
-    }
-}
         public async Task<CaseOrderInvoiceDto> GetOrCreateOrderInvoiceAsync(int orderId, int dentistId)
         {
             var order = await _repo.GetOrderWithItemsAsync(orderId);
