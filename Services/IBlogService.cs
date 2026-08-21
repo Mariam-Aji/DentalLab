@@ -30,6 +30,7 @@ namespace DentalLab.Api.Services
         Task<IEnumerable<BlogPostResponseDto>> GetRejectedPostsByDoctorIdAsync(int doctorId);
         Task<bool> DeleteDoctorPostAsync(int postId);
         Task<(bool success, string? error)> DeletePostByAdminAsync(int postId);
+        Task<bool> DeleteDoctorBlogPostAsync(int postId, int doctorId);
 
     }
 }

@@ -73,10 +73,9 @@ public class BlogRepository : IBlogRepository
         return await _context.BlogPosts
             .Include(b => b.Author)
             .Include(b => b.Attachments)
-            .Where(b => b.AuthorId == authorId)
+            .Where(b => b.AuthorId == authorId && b.Status == BlogPostStatus.Approved) 
             .ToListAsync();
     }
-
     public async Task<List<Notification>> GetNotificationsByRecipientIdAsync(int recipientId)
     {
         return await _context.Notifications
@@ -206,5 +205,21 @@ public class BlogRepository : IBlogRepository
         return await _context.Notifications
             .Where(n => n.BlogPostId == postId)
             .ToListAsync();
+    }
+    public async Task<bool> DeleteAsync(BlogPost post)
+    {
+        if (post.Attachments.Any())
+        {
+            _context.FileResources.RemoveRange(post.Attachments);
+        }
+
+        _context.BlogPosts.Remove(post);
+        return await _context.SaveChangesAsync() > 0;
+    }
+    public async Task<BlogPost?> GetByIdAsync(int id)
+    {
+        return await _context.BlogPosts
+            .Include(p => p.Attachments)
+            .FirstOrDefaultAsync(p => p.Id == id);
     }
 }

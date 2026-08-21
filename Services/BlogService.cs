@@ -290,8 +290,7 @@ public class BlogService : IBlogService
                 AuthorProfilePictureUrl = post.Author?.ProfilePictureUrl,
                 IsSensitiveRedacted = post.IsSensitiveRedacted,
                 Status = post.Status.ToString(),
-                ReviewMessage = post.Status == BlogPostStatus.Pending ? "معلق بانتظار المراجعة" :
-                                post.Status == BlogPostStatus.Rejected ? "تم رفض المنشور لمخالفته شروط النشر." : "منشور علني ومقبول",
+                ReviewMessage = "منشور علني ومقبول",
                 CreatedAt = post.CreatedAt,
                 Attachments = post.Attachments.Select(a => new BlogAttachmentDto
                 {
@@ -721,5 +720,18 @@ public class BlogService : IBlogService
         }
 
         return (true, null);
+    }
+    public async Task<bool> DeleteDoctorBlogPostAsync(int postId, int doctorId)
+    {
+        var post = await _blogRepo.GetByIdAsync(postId);
+
+        if (post == null)
+            throw new KeyNotFoundException("المنشور غير موجود");
+
+        // التحقق من ملكية الطبيب للمنشور
+        if (post.AuthorId != doctorId)
+            throw new UnauthorizedAccessException("غير مصرح لك بحذف هذا المنشور");
+
+        return await _blogRepo.DeleteAsync(post);
     }
 }

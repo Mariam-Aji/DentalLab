@@ -566,9 +566,7 @@ namespace DentalLab.Api.Services
 
                 await _repo.UpdateOrderAsync(order);
 
-                // ==========================================
-                // التعديل هنا فقط: جلب UserId لضمان وصول الإشعار
-                // ==========================================
+             
                 var lab = await _repo.GetLabByIdAsync(labId);
                 int targetUserId = lab != null ? lab.UserId : labId;
 
@@ -589,7 +587,6 @@ namespace DentalLab.Api.Services
 
                 await _hubContext.Clients.Group(labGroupId).SendAsync("ReceiveOrderNotification", alertText);
 
-                // تم التعديل لاستخدام UserId
                 await _hubContext.Clients.User(targetUserId.ToString()).SendAsync("ReceiveOrderNotification", alertText);
                 // ==========================================
 

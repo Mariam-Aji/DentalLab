@@ -33,4 +33,6 @@ public interface IBlogRepository
     Task<IEnumerable<BlogPost>> GetRejectedPostsByDoctorIdAsync(int doctorId);
     Task<bool> DeleteDoctorPostAsync(int postId);
     Task<IEnumerable<Notification>> GetNotificationsByBlogPostIdAsync(int postId);
+    Task<bool> DeleteAsync(BlogPost post);
+    Task<BlogPost?> GetByIdAsync(int id);
 }
