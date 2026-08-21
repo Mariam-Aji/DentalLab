@@ -71,9 +71,7 @@ public class CaseOrder
 
     public bool IsPaid { get; set; } = false;
 
-    /// <summary>
-    /// تاريخ ووقت الدفع — يُعبأ تلقائياً عند اكتمال عملية الدفع
-    /// </summary>
+   
     public DateTime? PaidAt { get; set; }
 
     public DateTime CreatedAt { get; set; }

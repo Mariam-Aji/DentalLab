@@ -140,9 +140,9 @@ namespace DentalLab.Api.Services
         }
 
         public async Task<CaseOrderItemResponseDto> AddItemToOrderAsync(
-     int orderId,
-     CaseOrderItemDto itemDto,
-     int dentistId)
+      int orderId,
+      CaseOrderItemDto itemDto,
+      int dentistId)
         {
             var order = await _repo.GetOrderByIdAsync(orderId);
 
@@ -167,6 +167,13 @@ namespace DentalLab.Api.Services
 
             order.EstimatedPrice = (order.EstimatedPrice ?? 0) + itemTotal;
 
+            if (!string.IsNullOrWhiteSpace(itemDto.Notes))
+            {
+                order.Notes = string.IsNullOrWhiteSpace(order.Notes)
+                    ? itemDto.Notes
+                    : $"{order.Notes}\n{itemDto.Notes}";
+            }
+
             await _repo.UpdateOrderAsync(order);
 
             return new CaseOrderItemResponseDto
@@ -176,7 +183,7 @@ namespace DentalLab.Api.Services
                 Status = order.Status.ToString(),
                 CompensationType = itemDto.CompensationType,
                 ToothNumbers = itemDto.ToothNumbers,
-
+                Notes = order.Notes 
             };
         }
 
