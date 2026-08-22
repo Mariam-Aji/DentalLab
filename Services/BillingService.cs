@@ -84,7 +84,7 @@ namespace DentalLab.Api.Services
             return (MapToCleanAdvertisements(dentists), MapToCleanAdvertisements(labs));
         }
 
-     
+
         private List<CleanOrderInvoiceDto> MapToCleanOrders(List<CaseOrder> orders)
         {
             return orders.Select(o => new CleanOrderInvoiceDto
@@ -92,19 +92,23 @@ namespace DentalLab.Api.Services
                 Id = o.Id,
                 Title = o.Title,
                 Status = o.Status.ToString(),
-                FinalPrice = o.FinalPrice ?? 0,
+                FinalPrice = o.FinalPrice??0,
                 IsPaid = o.IsPaid,
                 PaidAt = o.PaidAt,
                 CreatedAt = o.CreatedAt,
-                DentistName = o.CreatedBy?.Name ?? "",
-                DentistEmail = o.CreatedBy?.Email ?? "",
-                DentistPhone = o.CreatedBy?.Phone ?? "",
-                ClinicName = o.CreatedBy?.NamePlace ?? "",
-                AddressPlace = o.CreatedBy?.AddressPlace ?? "",
-                CityPlace = o.CreatedBy?.CityPlace ?? "",
-                CountryPlace = o.CreatedBy?.CountryPlace ?? "",
-                LabName = o.AssignedLab?.Description ?? "Lab #" + o.AssignedLabId,
-                Items = o.Items?.Select(i => i.CompensationType.ToString()).ToList() ?? new()
+                DentistName = o.CreatedBy?.Name,
+                DentistEmail = o.CreatedBy?.Email,
+                DentistPhone = o.CreatedBy?.Phone,
+                ClinicName = o.CreatedBy?.NamePlace,
+                AddressPlace = o.CreatedBy?.AddressPlace,
+                CityPlace = o.CreatedBy?.CityPlace,
+                CountryPlace = o.CreatedBy?.CountryPlace,
+
+                // 👈 قراءة الاسم الحقيقي للمخبر من NamePlace (أو Name كبديل) والوصف من Description
+                LabName = o.AssignedLab?.Owner?.NamePlace ?? o.AssignedLab?.Owner?.Name ?? "غير محدد",
+                LabDescription = o.AssignedLab?.Description,
+
+                Items = o.Items.Select(i => i.CompensationType.ToString()).ToList()
             }).ToList();
         }
 

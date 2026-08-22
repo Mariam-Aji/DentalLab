@@ -425,8 +425,9 @@ public class CaseOrderRepository : ICaseOrderRepository
     {
         return await _context.CaseOrders
             .AsNoTracking()
-            .Include(o => o.CreatedBy)      // تفاصيل الطبيب
-            .Include(o => o.AssignedLab)    // تفاصيل المخبر وعنوانه
+            .Include(o => o.CreatedBy)
+            .Include(o => o.AssignedLab)
+                .ThenInclude(l => l.Owner) // 👈 إضافة التضمين لجلب بيانات مالك المخبر من جدول User
             .Include(o => o.Patient)
             .Include(o => o.Items)
             .Include(o => o.Files)
