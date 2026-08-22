@@ -194,11 +194,22 @@ public class BlogRepository : IBlogRepository
 
     public async Task<bool> DeleteDoctorPostAsync(int postId)
     {
-        var post = await _context.BlogPosts.FindAsync(postId);
-        if (post == null) return false;
+        // 1. فك ارتباط الإشعارات بالمنشور (تصفير BlogPostId) للحفاظ على الإشعار في السجل وتجنب خطأ المفتاح الأجنبي
+        await _context.Notifications
+            .Where(n => n.BlogPostId == postId)
+            .ExecuteUpdateAsync(s => s.SetProperty(n => n.BlogPostId, (int?)null));
 
-        _context.BlogPosts.Remove(post);
-        return await _context.SaveChangesAsync() > 0;
+        // 2. حذف كافة المرفقات المرتبطة بالمنشور من جدول FileResource
+        await _context.FileResources
+            .Where(f => f.BlogPostId == postId)
+            .ExecuteDeleteAsync();
+
+        // 3. حذف المنشور من قاعدة البيانات
+        int deletedRows = await _context.BlogPosts
+            .Where(b => b.Id == postId)
+            .ExecuteDeleteAsync();
+
+        return deletedRows > 0;
     }
     public async Task<IEnumerable<Notification>> GetNotificationsByBlogPostIdAsync(int postId)
     {

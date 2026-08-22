@@ -454,31 +454,31 @@ namespace DentalLab.Api.Controllers
 
             return Ok(new { message = "تم حذف المنشور بواسطة الأدمن بنجاح وإرسال الإشعار للمستخدم." });
         }
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("Dentist/delete-post/{postId}")]
-        public async Task<IActionResult> DeleteBlogPost(int id)
-        {
-            try
-            {
-                int doctorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        //[Authorize(Roles = "Admin")]
+        //[HttpDelete("Dentist/delete-post/{postId}")]
+        //public async Task<IActionResult> DeleteBlogPost(int id)
+        //{
+        //    try
+        //    {
+        //        int doctorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-                var result = await _blogService.DeleteDoctorBlogPostAsync(id, doctorId);
+        //        var result = await _blogService.DeleteDoctorBlogPostAsync(id, doctorId);
 
-                return Ok(new { message = "تم حذف المنشور بنجاح" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
+        //        return Ok(new { message = "تم حذف المنشور بنجاح" });
+        //    }
+        //    catch (KeyNotFoundException ex)
+        //    {
+        //        return NotFound(new { message = ex.Message });
+        //    }
+        //    catch (UnauthorizedAccessException ex)
+        //    {
+        //        return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(new { message = ex.Message });
+        //    }
+        //}
     }
 
 }

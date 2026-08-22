@@ -33,7 +33,12 @@ public class SearchRepository : ISearchRepository
             .Include(b => b.Author)
             .Include(b => b.Attachments)
             .Where(b => b.Status == BlogPostStatus.Approved &&
-                       (b.Title.Contains(query) || b.Content.Contains(query)))
+                       (b.Title.Contains(query) ||
+                        b.Content.Contains(query) ||
+                        (b.Author != null && (
+                            b.Author.Name.Contains(query) ||
+                            (b.Author.NamePlace != null && b.Author.NamePlace.Contains(query))
+                        ))))
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
     }
