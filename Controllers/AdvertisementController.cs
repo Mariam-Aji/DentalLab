@@ -118,7 +118,10 @@ public class AdvertisementController : ControllerBase
                 adv.Title,
                 adv.Content,
                 adv.UserId,
+                adv.Price,
                 adv.IsActive,
+                adv.IsPaid,
+                adv.PaidAt,
                 adv.CreatedAt,
                 adv.ExpiresAt,
                 Images = !string.IsNullOrEmpty(adv.ImageUrl)
@@ -220,7 +223,7 @@ public class AdvertisementController : ControllerBase
         });
     }
 
-    //[Authorize(Roles = "Admin,Dentist")]
+    [Authorize(Roles = "Admin,Dentist")]
     [HttpGet("dentists")]
     public async Task<IActionResult> GetAdvertisementsForDentists()
     {
@@ -252,7 +255,7 @@ public class AdvertisementController : ControllerBase
         }
     }
 
-    private List<object> MapAdvertisementsToResponse(List<Advertisement> advertisements)
+    private object MapAdvertisementsToResponse(IEnumerable<Advertisement> advertisements)
     {
         return advertisements.Select(adv => new
         {
@@ -260,13 +263,16 @@ public class AdvertisementController : ControllerBase
             adv.Title,
             adv.Content,
             adv.UserId,
+            adv.Price, 
             adv.IsActive,
+            adv.IsPaid,
+            adv.PaidAt,
             adv.CreatedAt,
             adv.ExpiresAt,
             Images = !string.IsNullOrEmpty(adv.ImageUrl)
                 ? adv.ImageUrl.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList()
                 : new List<string>()
-        }).Cast<object>().ToList();
+        }).ToList();
     }
 
     [HttpPost("doctor/create-advertisement")]
