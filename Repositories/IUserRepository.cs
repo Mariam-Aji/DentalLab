@@ -11,5 +11,6 @@ public interface IUserRepository
     Task<User?> GetUserByIdAsync(int userId);
     Task<bool> UpdateUserAsync(User user);
     Task<bool> ChangeUserStatusAsync(int userId, AccountStatus newStatus);
+    Task<string?> GetProfilePictureUrlAsync(int userId);
 
 }

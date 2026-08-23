@@ -111,4 +111,12 @@ public class UserRepository : IUserRepository
         _context.Users.Update(user);
         return await _context.SaveChangesAsync() > 0;
     }
+    public async Task<string?> GetProfilePictureUrlAsync(int userId)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.ProfilePictureUrl)
+            .FirstOrDefaultAsync();
+    }
 }

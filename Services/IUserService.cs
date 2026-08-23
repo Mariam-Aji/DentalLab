@@ -9,4 +9,6 @@ public interface IUserService
     Task<(object? Data, string? Error)> GetAllDentistsServiceAsync();
     Task<(string? RelativePath, string? Error)> UpdateProfilePictureAsync(int userId, IFormFile file);
     Task<bool> ChangeUserStatusAsync(int userId, AccountStatus newStatus);
+    Task<string?> GetProfilePictureUrlAsync(int userId);
+
 }

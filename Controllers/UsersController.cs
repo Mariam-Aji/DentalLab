@@ -105,4 +105,17 @@ public class UsersController : ControllerBase
 
         return Ok(new { message = "تم تحديث حالة المستخدم بنجاح.", newStatus = dto.Status.ToString() });
     }
+    [Authorize(Roles = "Admin")]
+    [HttpGet("{id}/profile-picture")]
+    public async Task<IActionResult> GetProfilePicture(int id)
+    {
+        var pictureUrl = await _userService.GetProfilePictureUrlAsync(id);
+
+        if (string.IsNullOrEmpty(pictureUrl))
+        {
+            return NotFound(new { message = "صورة البروفايل غير موجودة أو المستخدم غير موجود." });
+        }
+
+        return Ok(new { profilePictureUrl = pictureUrl });
+    }
 }

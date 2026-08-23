@@ -145,4 +145,8 @@ public class UserService : IUserService
     {
         return await _userRepo.ChangeUserStatusAsync(userId, newStatus);
     }
+    public async Task<string?> GetProfilePictureUrlAsync(int userId)
+    {
+        return await _userRepo.GetProfilePictureUrlAsync(userId);
+    }
 }
