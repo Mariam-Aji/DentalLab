@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DentalLab.Api.DTOs;
 using DentalLab.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -89,4 +90,31 @@ public class ScanVisitService : IScanVisitService
             .ToListAsync();
     }
     //
+    public async Task<List<DentistScanVisitDto>> GetDentistScanVisitsAsync(int dentistId)
+    {
+        var requests = await _context.ScanVisitRequests
+            .AsNoTracking()
+            .Include(s => s.Lab)
+                .ThenInclude(l => l!.Owner)
+            .Include(s => s.Slot)
+            .Where(s => s.DentistId == dentistId)
+            .OrderByDescending(s => s.Slot != null ? s.Slot.Date : s.CreatedAt)
+            .ToListAsync();
+
+        return requests.Select(r => new DentistScanVisitDto
+        {
+            Id = r.Id,
+            LabId = r.LabId,
+            LabName = r.Lab?.Owner?.NamePlace ?? r.Lab?.Owner?.Name,
+            LabAddress = r.Lab?.Owner?.AddressPlace,
+            LabPhone = r.Lab?.Owner?.Phone,
+
+            AppointmentDate = r.Slot?.Date ?? DateTime.MinValue,
+            AppointmentTime = r.Slot?.Time ?? TimeSpan.Zero,
+            Period = r.Slot?.Period.ToString() ?? string.Empty,
+
+            CreatedAt = r.CreatedAt
+        }).ToList();
+    }
+
 }

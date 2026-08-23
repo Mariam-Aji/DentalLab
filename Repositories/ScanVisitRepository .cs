@@ -66,5 +66,15 @@ public class ScanVisitRepository : IScanVisitRepository
         await _context.Notifications.AddAsync(notification);
         await _context.SaveChangesAsync();
     }
+    public async Task<List<ScanVisitRequest>> GetByDentistIdAsync(int dentistId)
+    {
+        return await _context.ScanVisitRequests
+            .AsNoTracking()
+            .Include(s => s.Lab)
+            .Include(s => s.Slot)
+            .Where(s => s.DentistId == dentistId)
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+    }
     //
 }

@@ -14,5 +14,6 @@ public interface IScanVisitRepository
 
     Task<User?> GetLabOwnerUserAsync(int labId);
     Task AddNotificationAsync(Notification notification);
+    Task<List<ScanVisitRequest>> GetByDentistIdAsync(int dentistId);
     //
 }

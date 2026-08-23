@@ -1,4 +1,5 @@
-﻿using DentalLab.Api.Models;
+﻿using DentalLab.Api.DTOs;
+using DentalLab.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -60,4 +61,19 @@ public class ScanVisitController : ControllerBase
         return Ok(slots);
     }
     //
+    [Authorize(Roles = "Dentist")]
+    [HttpGet("my-bookings")]
+    public async Task<ActionResult<List<DentistScanVisitDto>>> GetMyBookings()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("sub")?.Value;
+
+        if (!int.TryParse(userIdClaim, out int dentistId))
+        {
+            return Unauthorized(new { message = "رمز المعرف في التوكن غير صالح." });
+        }
+
+        var bookings = await _service.GetDentistScanVisitsAsync(dentistId);
+        return Ok(bookings);
+    }
 }

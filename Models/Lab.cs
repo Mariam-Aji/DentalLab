@@ -32,7 +32,7 @@ public class Lab
 
     public long? MyFatoorahSupplierCode { get; set; }
 
-    
+
     public List<CaseOrder> AssignedCases { get; set; } = new();
 
     public List<Rating> Ratings { get; set; } = new();
