@@ -67,5 +67,13 @@ namespace DentalLab.Api.Repositories
 
             return lab?.Id;
         }
+        public async Task<string?> GetProfilePictureByLabIdAsync(int labId)
+        {
+            return await _context.Labs
+                .AsNoTracking()
+                .Where(l => l.Id == labId)
+                .Select(l => l.Owner.ProfilePictureUrl)
+                .FirstOrDefaultAsync();
+        }
     }
 }

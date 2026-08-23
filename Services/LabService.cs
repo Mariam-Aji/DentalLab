@@ -138,5 +138,9 @@ namespace DentalLab.Api.Services
         {
             return await _labRepository.GetLabIdByUserIdAsync(userId);
         }
+        public async Task<string?> GetLabProfilePictureAsync(int labId)
+        {
+            return await _labRepository.GetProfilePictureByLabIdAsync(labId);
+        }
     }
 }

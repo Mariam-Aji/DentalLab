@@ -89,6 +89,18 @@ namespace DentalLab.Api.Controllers
 
             return Ok(new { userId = userId, labId = labId });
         }
+        [HttpGet("{id}/profile-picture")]
+        public async Task<IActionResult> GetLabProfilePicture(int id)
+        {
+            var pictureUrl = await _labService.GetLabProfilePictureAsync(id);
+
+            if (string.IsNullOrEmpty(pictureUrl))
+            {
+                return NotFound(new { message = "المخبر غير موجود أو لا يمتلك صورة بروفايل." });
+            }
+
+            return Ok(new { profilePictureUrl = pictureUrl });
+        }
 
     }
 }
